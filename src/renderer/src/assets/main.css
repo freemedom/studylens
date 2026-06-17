@@ -130,6 +130,13 @@ body {
 
 .camera-error {
   color: #f87171;
+  padding: 16px;
+  text-align: left;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 .metrics-panel {

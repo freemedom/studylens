@@ -6,6 +6,7 @@ import { BlinkDetector } from '../vision/blinkDetector'
 import { estimateDistanceStatus, estimateFaceRatio } from '../vision/distanceEstimator'
 import { ExpressionEstimator } from '../vision/expressionEstimator'
 import { detectFace, initFaceLandmarker } from '../vision/faceLandmarker'
+import { requestCameraStream, VisionInitError } from '../utils/visionInitError'
 
 function computeFatigueLevel(
   blinksPerMinute: number,
@@ -65,17 +66,28 @@ export function useVisionLoop(
 
     async function setup(): Promise<void> {
       try {
-        await initFaceLandmarker()
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: 'user' },
-          audio: false
-        })
+        try {
+          await initFaceLandmarker()
+        } catch (err) {
+          throw new VisionInitError('model', err)
+        }
+
+        try {
+          stream = await requestCameraStream()
+        } catch (err) {
+          throw new VisionInitError('camera', err)
+        }
 
         const video = videoRef.current
         if (!video || cancelled) return
 
         video.srcObject = stream
-        await video.play()
+        try {
+          await video.play()
+        } catch (err) {
+          throw new VisionInitError('video', err)
+        }
+
         setReady(true)
         loadingRef.current = false
 
@@ -207,7 +219,14 @@ export function useVisionLoop(
 
         loop()
       } catch (err) {
-        setError(err instanceof Error ? err.message : '摄像头初始化失败')
+        console.error('[StudyLens] Vision init failed:', err)
+        const message =
+          err instanceof VisionInitError
+            ? err.message
+            : err instanceof Error
+              ? `[Init] ${err.name}: ${err.message}`
+              : `[Init] ${String(err)}`
+        setError(message)
       }
     }
 
