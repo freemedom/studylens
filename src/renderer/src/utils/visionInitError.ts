@@ -51,14 +51,27 @@ function domExceptionDetail(err: DOMException): string {
   }
 }
 
+function stringifyUnknown(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (err instanceof DOMException) return `${err.name}: ${err.message}`
+  if (err instanceof Event) {
+    const target = err.target as { src?: string; href?: string } | null
+    const src = target?.src ?? target?.href
+    return src
+      ? `Resource load failed (${err.type}): ${src}`
+      : `Resource load failed (${err.type}) — often caused by CSP blocking external scripts`
+  }
+  return String(err)
+}
+
 function modelErrorDetail(err: unknown): string {
-  const msg = err instanceof Error ? err.message : String(err)
+  const msg = stringifyUnknown(err)
   const lines = [`MediaPipe / Face Landmarker failed: ${msg}`]
 
-  if (/fetch|network|Failed to load|ECONNREFUSED|ENOTFOUND/i.test(msg)) {
+  if (/fetch|network|Failed to load|ECONNREFUSED|ENOTFOUND|Content Security Policy|CSP/i.test(msg)) {
     lines.push(
-      'Likely fix: check internet access (WASM loads from cdn.jsdelivr.net).',
-      'If offline, bundle WASM locally or use a VPN/firewall exception.'
+      'Likely fix: MediaPipe WASM must load from local public/wasm/ (run: npm install).',
+      'If you see CSP errors, ensure script-src includes \'self\' and \'wasm-unsafe-eval\'.'
     )
   }
   if (/face_landmarker|model|404|not found/i.test(msg)) {

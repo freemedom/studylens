@@ -3,7 +3,7 @@ import { FaceLandmarker, FilesetResolver, type FaceLandmarkerResult } from '@med
 let landmarker: FaceLandmarker | null = null
 
 async function createLandmarker(delegate: 'GPU' | 'CPU'): Promise<FaceLandmarker> {
-  const wasmPath = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+  const wasmPath = `${import.meta.env.BASE_URL}wasm`
   const vision = await FilesetResolver.forVisionTasks(wasmPath)
 
   return FaceLandmarker.createFromOptions(vision, {
