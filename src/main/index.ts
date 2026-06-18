@@ -52,9 +52,11 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
+  // Scaffold IPC smoke test: renderer can send 'ping' and main logs 'pong' (one-way, no reply).
   ipcMain.on('ping', () => console.log('pong'))
 
+  // Context mode: renderer calls window.api.getWifiSSID() → preload invoke → this handler.
+  // Main process reads the OS WiFi SSID (netsh / networksetup / nmcli) and returns string | null.
   ipcMain.handle('context:getWifiSSID', async () => getWifiSSID())
 
   createWindow()

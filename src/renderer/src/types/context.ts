@@ -1,7 +1,11 @@
 export type StudyMode = 'focus' | 'home' | 'library' | 'cafe'
 
+/**
+ * String literal union — `ContextSource` may only be one of these four strings (not any string).
+ * TypeScript narrows types in `switch`/`if` and flags typos at compile time.
+ * Describes *how* the active study mode was chosen (see `matchRule.ts` priority).
+ */
 export type ContextSource = 'wifi' | 'location' | 'manual' | 'default'
-
 export type WifiContextRule = {
   id: string
   kind: 'wifi'
