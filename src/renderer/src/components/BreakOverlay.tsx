@@ -5,6 +5,11 @@ export default function BreakOverlay(): React.JSX.Element | null {
   const showBreak = useSessionStore((s) => s.showBreak)
   const breakSecondsLeft = useSessionStore((s) => s.breakSecondsLeft)
 
+  // Re-run this effect when `showBreak` changes (React dependency array).
+  // - false → true: register the Space key listener to dismiss the overlay early.
+  // - true → false: cleanup runs first (removeEventListener), then the effect returns early.
+  // - unchanged: effect does not re-run, avoiding duplicate listeners.
+  // Including `showBreak` keeps the listener in sync with overlay visibility and satisfies the Rules of Hooks.
   useEffect(() => {
     if (!showBreak) return
     const onKey = (e: KeyboardEvent): void => {
