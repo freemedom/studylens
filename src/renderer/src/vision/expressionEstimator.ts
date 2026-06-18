@@ -27,8 +27,12 @@ function blendScore(blendshapes: Category[] | undefined, name: string): number {
  *    are tuned empirically for webcam distance.
  * 2. **brow** — sum of `browDownLeft`, `browDownRight`, and `browInnerUp` scores.
  *    Raised inner brows and lowered outer brows often appear under concentration strain.
- * 3. **mouth** — sum of `mouthFrownLeft` and `mouthFrownRight`; frown correlates with
- *    discomfort or negative affect during long screen use.
+ * 3. **mouth** — sum of `mouthFrownLeft` and `mouthFrownRight`.
+ *    - `mouthFrownLeft`: blendshape weight for the **left mouth corner** pulling **downward**
+ *      (left-side frown / downturned lip); 0 = neutral, 1 = fully activated.
+ *    - `mouthFrownRight`: same deformation on the **right mouth corner**.
+ *    Together they approximate a frown (inverse of smile); higher values suggest discomfort,
+ *    strain, or negative affect during long screen use.
  *
  * ## Decision tree (first match wins)
  * | Condition | Mood | Rationale |
@@ -81,6 +85,7 @@ export class ExpressionEstimator {
       blendScore(blendshapes, 'browDownLeft') +
       blendScore(blendshapes, 'browDownRight') +
       blendScore(blendshapes, 'browInnerUp')
+    // Left + right mouth-corner downturn (MediaPipe ARKit blendshapes); not a smile metric.
     const mouth =
       blendScore(blendshapes, 'mouthFrownLeft') + blendScore(blendshapes, 'mouthFrownRight')
 
