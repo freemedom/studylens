@@ -25,10 +25,11 @@ export function useContextDetector(): void {
   const setCurrentLocation = useContextStore((s) => s.setCurrentLocation)
   const loadPersisted = useContextStore((s) => s.loadPersisted)
 
+  // On mount: restore WiFi/location rules and manual mode override from localStorage,
+  // then recompute activeMode before the first WiFi/geolocation poll runs.
   useEffect(() => {
     loadPersisted()
   }, [loadPersisted])
-
   useEffect(() => {
     let cancelled = false
 

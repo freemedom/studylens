@@ -62,7 +62,6 @@ export default function MetricsPanel(): React.JSX.Element {
 
   return (
     <div className="metrics-panel">
-      <h2>实时指标</h2>
       <div className="metric-card">
         <div className="metric-label">眨眼总数</div>
         <div className="metric-value">{blinkCount}</div>

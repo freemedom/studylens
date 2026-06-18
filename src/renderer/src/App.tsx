@@ -1,13 +1,12 @@
 import AlertBanner from './components/AlertBanner'
 import BreakOverlay from './components/BreakOverlay'
 import CameraPreview from './components/CameraPreview'
-import ContextModePanel from './components/ContextModePanel'
 import FatigueOverlay from './components/FatigueOverlay'
-import MetricsPanel from './components/MetricsPanel'
 import ModeBadge from './components/ModeBadge'
 import PostureCalibrationOverlay from './components/PostureCalibrationOverlay'
 import PostureHint from './components/PostureHint'
 import SessionControls from './components/SessionControls'
+import SidePanelTabs from './components/SidePanelTabs'
 import { useContextDetector } from './hooks/useContextDetector'
 
 function App(): React.JSX.Element {
@@ -30,8 +29,7 @@ function App(): React.JSX.Element {
       <main className="app-main">
         <CameraPreview />
         <div className="side-panels">
-          <ContextModePanel />
-          <MetricsPanel />
+          <SidePanelTabs />
         </div>
       </main>
       <PostureHint />

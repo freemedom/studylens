@@ -60,7 +60,49 @@ body {
 .side-panels {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.side-panel-tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.side-panel-tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.side-panel-tab {
+  flex: 1;
+  border: 1px solid #243044;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #141c28;
+  color: #8b9cb3;
+}
+
+.side-panel-tab:hover {
+  color: #e7ecf3;
+}
+
+.side-panel-tab.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.45);
+  color: #93c5fd;
+}
+
+.side-panel-content {
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
 }

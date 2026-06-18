@@ -43,8 +43,6 @@ export default function ContextModePanel(): React.JSX.Element {
 
   return (
     <div className="context-mode-panel">
-      <h2>情境模式</h2>
-
       <div className="metric-card">
         <div className="metric-label">当前模式</div>
         <div className={`metric-badge mode-badge mode-badge-${activeMode}`}>
