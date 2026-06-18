@@ -1,6 +1,13 @@
 import { create } from 'zustand'
 import { SESSIONS_STORAGE_KEY } from '../constants/thresholds'
-import type { DistanceStatus, Mood, SessionSummary } from '../types/metrics'
+import type {
+  CalibrationPhase,
+  DistanceStatus,
+  Mood,
+  PostureBaseline,
+  PostureIssue,
+  SessionSummary
+} from '../types/metrics'
 
 interface SessionState {
   isRunning: boolean
@@ -17,6 +24,17 @@ interface SessionState {
   alertMessage: string | null
   showBreak: boolean
   breakSecondsLeft: number
+  calibrationPhase: CalibrationPhase
+  calibrationSecondsLeft: number
+  calibrationMessage: string | null
+  postureBaseline: PostureBaseline | null
+  postureIssue: PostureIssue
+  neckAngleDeg: number
+  shoulderTiltDeg: number
+  forwardRatio: number
+  postureScore: number
+  postureAlerts: number
+  showPostureHint: boolean
   sessionStart: number | null
   distanceAlerts: number
   tiredSamples: number
@@ -24,7 +42,9 @@ interface SessionState {
   setReady: (ready: boolean) => void
   setError: (error: string | null) => void
   toggleMesh: () => void
-  startSession: () => void
+  startCalibration: () => void
+  finishCalibration: (baseline: PostureBaseline, usedFallback: boolean) => void
+  cancelCalibration: () => void
   stopSession: () => void
   updateMetrics: (metrics: {
     blinkCount: number
@@ -37,6 +57,13 @@ interface SessionState {
     alertMessage: string | null
     showBreak: boolean
     breakSecondsLeft: number
+    postureIssue: PostureIssue
+    neckAngleDeg: number
+    shoulderTiltDeg: number
+    forwardRatio: number
+    postureScore: number
+    showPostureHint: boolean
+    calibrationSecondsLeft?: number
   }) => void
   loadHistory: () => void
 }
@@ -71,6 +98,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   alertMessage: null,
   showBreak: false,
   breakSecondsLeft: 0,
+  calibrationPhase: 'idle',
+  calibrationSecondsLeft: 0,
+  calibrationMessage: null,
+  postureBaseline: null,
+  postureIssue: 'unknown',
+  neckAngleDeg: 0,
+  shoulderTiltDeg: 0,
+  forwardRatio: 0,
+  postureScore: 0,
+  postureAlerts: 0,
+  showPostureHint: false,
   sessionStart: null,
   distanceAlerts: 0,
   tiredSamples: 0,
@@ -80,16 +118,39 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setError: (error) => set({ error }),
   toggleMesh: () => set((s) => ({ showMesh: !s.showMesh })),
 
-  startSession: () =>
+  startCalibration: () =>
     set({
-      isRunning: true,
-      sessionStart: Date.now(),
+      calibrationPhase: 'running',
+      calibrationSecondsLeft: 5,
+      calibrationMessage: null,
+      isRunning: false,
+      postureBaseline: null,
+      postureAlerts: 0,
       blinkCount: 0,
       blinksPerMinute: 0,
       distanceAlerts: 0,
       tiredSamples: 0,
       alertMessage: null,
-      showBreak: false
+      showBreak: false,
+      showPostureHint: false
+    }),
+
+  finishCalibration: (baseline, usedFallback) =>
+    set({
+      calibrationPhase: 'done',
+      postureBaseline: baseline,
+      isRunning: true,
+      sessionStart: Date.now(),
+      calibrationMessage: usedFallback
+        ? '校准样本不足，已使用默认坐姿基准'
+        : '坐姿校准完成'
+    }),
+
+  cancelCalibration: () =>
+    set({
+      calibrationPhase: 'idle',
+      calibrationSecondsLeft: 0,
+      calibrationMessage: null
     }),
 
   stopSession: () => {
@@ -103,12 +164,21 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         blinkCount: state.blinkCount,
         avgBlinksPerMinute: Math.round(state.blinkCount / durationMin),
         distanceAlerts: state.distanceAlerts,
-        tiredSamples: state.tiredSamples
+        tiredSamples: state.tiredSamples,
+        postureAlerts: state.postureAlerts
       }
       saveSession(summary)
       set({ history: loadSessions() })
     }
-    set({ isRunning: false, sessionStart: null })
+    set({
+      isRunning: false,
+      sessionStart: null,
+      calibrationPhase: 'idle',
+      calibrationSecondsLeft: 0,
+      calibrationMessage: null,
+      postureBaseline: null,
+      showPostureHint: false
+    })
   },
 
   updateMetrics: (metrics) => set(metrics),

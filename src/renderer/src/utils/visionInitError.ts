@@ -1,4 +1,4 @@
-export type VisionInitStage = 'model' | 'camera' | 'video'
+export type VisionInitStage = 'face-model' | 'pose-model' | 'camera' | 'video'
 
 export class VisionInitError extends Error {
   readonly stage: VisionInitStage
@@ -64,9 +64,9 @@ function stringifyUnknown(err: unknown): string {
   return String(err)
 }
 
-function modelErrorDetail(err: unknown): string {
+function modelErrorDetail(err: unknown, modelName: string, modelFile: string, modelUrl: string): string {
   const msg = stringifyUnknown(err)
-  const lines = [`MediaPipe / Face Landmarker failed: ${msg}`]
+  const lines = [`MediaPipe / ${modelName} failed: ${msg}`]
 
   if (/fetch|network|Failed to load|ECONNREFUSED|ENOTFOUND|Content Security Policy|CSP/i.test(msg)) {
     lines.push(
@@ -74,10 +74,10 @@ function modelErrorDetail(err: unknown): string {
       'If you see CSP errors, ensure script-src includes \'self\' and \'wasm-unsafe-eval\'.'
     )
   }
-  if (/face_landmarker|model|404|not found/i.test(msg)) {
+  if (new RegExp(modelFile.replace('.', '\\.'), 'i').test(msg) || /model|404|not found/i.test(msg)) {
     lines.push(
-      'Likely fix: ensure public/models/face_landmarker.task exists.',
-      'Re-download: https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
+      `Likely fix: ensure public/models/${modelFile} exists.`,
+      `Re-download: ${modelUrl}`
     )
   }
   if (/webgl|gpu|GL|delegate/i.test(msg)) {
@@ -95,15 +95,29 @@ function modelErrorDetail(err: unknown): string {
 
 export function formatVisionInitError(stage: VisionInitStage, err: unknown): string {
   const stageLabel =
-    stage === 'model'
-      ? '[Step 1/3] Face model'
-      : stage === 'camera'
-        ? '[Step 2/3] Camera'
-        : '[Step 3/3] Video playback'
+    stage === 'face-model'
+      ? '[Step 1/4] Face model'
+      : stage === 'pose-model'
+        ? '[Step 2/4] Pose model'
+        : stage === 'camera'
+          ? '[Step 3/4] Camera'
+          : '[Step 4/4] Video playback'
 
   let detail: string
-  if (stage === 'model') {
-    detail = modelErrorDetail(err)
+  if (stage === 'face-model') {
+    detail = modelErrorDetail(
+      err,
+      'Face Landmarker',
+      'face_landmarker.task',
+      'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
+    )
+  } else if (stage === 'pose-model') {
+    detail = modelErrorDetail(
+      err,
+      'Pose Landmarker',
+      'pose_landmarker_lite.task',
+      'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'
+    )
   } else if (stage === 'camera' && err instanceof DOMException) {
     detail = domExceptionDetail(err)
   } else if (stage === 'camera') {

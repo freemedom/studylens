@@ -342,3 +342,82 @@ body {
   font-size: 0.8rem !important;
   margin-top: 16px !important;
 }
+
+.calibration-overlay .calibration-card {
+  max-width: 440px;
+}
+
+.calibration-cancel {
+  margin-top: 20px;
+}
+
+.calibration-message {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+  font-size: 0.8rem;
+}
+
+.metric-hint {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: #8b9cb3;
+}
+
+.posture-good {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+
+.posture-bad {
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+
+.posture-unknown {
+  background: rgba(139, 156, 179, 0.2);
+  color: #8b9cb3;
+}
+
+.posture-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #4ade80, #fbbf24, #f87171);
+  transition: width 0.3s ease;
+}
+
+.posture-hint {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 5;
+  max-width: 240px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(26, 35, 50, 0.95);
+  border: 1px solid #243044;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.posture-hint-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fbbf24;
+  margin-bottom: 6px;
+}
+
+.posture-hint-text {
+  font-size: 0.85rem;
+  color: #e7ecf3;
+}
+
+.posture-hint-forward_head {
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+.posture-hint-head_tilt,
+.posture-hint-shoulder_uneven {
+  border-color: rgba(251, 191, 36, 0.5);
+}

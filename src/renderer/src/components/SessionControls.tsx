@@ -3,17 +3,25 @@ import { useSessionStore } from '../store/sessionStore'
 export default function SessionControls(): React.JSX.Element {
   const isRunning = useSessionStore((s) => s.isRunning)
   const isReady = useSessionStore((s) => s.isReady)
-  const startSession = useSessionStore((s) => s.startSession)
+  const calibrationPhase = useSessionStore((s) => s.calibrationPhase)
+  const startCalibration = useSessionStore((s) => s.startCalibration)
   const stopSession = useSessionStore((s) => s.stopSession)
+
+  const calibrating = calibrationPhase === 'running'
 
   return (
     <div className="session-controls">
-      {!isRunning ? (
-        <button type="button" className="btn-primary" disabled={!isReady} onClick={startSession}>
+      {!isRunning && !calibrating ? (
+        <button type="button" className="btn-primary" disabled={!isReady} onClick={startCalibration}>
           开始学习会话
         </button>
       ) : (
-        <button type="button" className="btn-secondary" onClick={stopSession}>
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={calibrating}
+          onClick={stopSession}
+        >
           结束会话
         </button>
       )}

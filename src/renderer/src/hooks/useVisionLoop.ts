@@ -1,11 +1,15 @@
 import { useEffect, useRef } from 'react'
-import { FATIGUE_BREAK_SECONDS } from '../constants/thresholds'
+import { FATIGUE_BREAK_SECONDS, POSTURE_ALERT_HOLD_MS } from '../constants/thresholds'
 import { useSessionStore } from '../store/sessionStore'
-import type { DistanceStatus, Mood } from '../types/metrics'
+import type { DistanceStatus, Mood, PostureIssue } from '../types/metrics'
 import { BlinkDetector } from '../vision/blinkDetector'
+import { drawPostureSkeleton } from '../vision/drawPostureSkeleton'
 import { estimateDistanceStatus, estimateFaceRatio } from '../vision/distanceEstimator'
 import { ExpressionEstimator } from '../vision/expressionEstimator'
 import { detectFace, initFaceLandmarker } from '../vision/faceLandmarker'
+import { PostureCalibrator } from '../vision/postureCalibrator'
+import { estimatePosture, postureAlertMessage } from '../vision/postureEstimator'
+import { detectPose, initPoseLandmarker } from '../vision/poseLandmarker'
 import { requestCameraStream, VisionInitError } from '../utils/visionInitError'
 
 function computeFatigueLevel(
@@ -22,14 +26,21 @@ function computeFatigueLevel(
 
 function buildAlert(
   distanceStatus: DistanceStatus,
+  postureIssue: PostureIssue,
   mood: Mood,
   blinksPerMinute: number
 ): string | null {
   if (distanceStatus === 'too_near') return '请远离屏幕，保持一臂距离'
   if (distanceStatus === 'too_far') return '请靠近摄像头或调整坐姿'
+  const postureMsg = postureAlertMessage(postureIssue)
+  if (postureMsg) return postureMsg
   if (mood === 'tired' || blinksPerMinute < 10) return '眨眼偏少，注意休息'
   if (mood === 'restless') return '状态烦躁，试试深呼吸'
   return null
+}
+
+function isBadPosture(issue: PostureIssue): boolean {
+  return issue !== 'good' && issue !== 'unknown'
 }
 
 export function useVisionLoop(
@@ -38,10 +49,13 @@ export function useVisionLoop(
 ): { loading: boolean } {
   const blinkDetector = useRef(new BlinkDetector())
   const expressionEstimator = useRef(new ExpressionEstimator())
+  const postureCalibrator = useRef(new PostureCalibrator())
   const breakEndTime = useRef<number | null>(null)
   const lastTimestamp = useRef(0)
   const prevDistance = useRef<DistanceStatus>('none')
   const prevMood = useRef<Mood>('unknown')
+  const prevPosture = useRef<PostureIssue>('unknown')
+  const badPostureSince = useRef<number | null>(null)
   const loadingRef = useRef(true)
 
   const isRunning = useSessionStore((s) => s.isRunning)
@@ -56,8 +70,24 @@ export function useVisionLoop(
       expressionEstimator.current.reset()
       prevDistance.current = 'none'
       prevMood.current = 'unknown'
+      prevPosture.current = 'unknown'
+      badPostureSince.current = null
     }
   }, [isRunning])
+
+  useEffect(() => {
+    const unsub = useSessionStore.subscribe((state, prev) => {
+      if (state.calibrationPhase === 'running' && prev.calibrationPhase !== 'running') {
+        postureCalibrator.current.start(Date.now())
+        prevPosture.current = 'unknown'
+        badPostureSince.current = null
+      }
+      if (state.calibrationPhase === 'idle' && prev.calibrationPhase === 'running') {
+        postureCalibrator.current.reset()
+      }
+    })
+    return unsub
+  }, [])
 
   useEffect(() => {
     let rafId = 0
@@ -69,7 +99,13 @@ export function useVisionLoop(
         try {
           await initFaceLandmarker()
         } catch (err) {
-          throw new VisionInitError('model', err)
+          throw new VisionInitError('face-model', err)
+        }
+
+        try {
+          await initPoseLandmarker()
+        } catch (err) {
+          throw new VisionInitError('pose-model', err)
         }
 
         try {
@@ -97,17 +133,66 @@ export function useVisionLoop(
           const video = videoRef.current
           const canvas = canvasRef.current
           const now = performance.now()
+          const wallNow = Date.now()
 
           if (video.readyState >= 2 && now !== lastTimestamp.current) {
             lastTimestamp.current = now
-            const result = detectFace(video, now)
+            const faceResult = detectFace(video, now)
+            const poseResult = detectPose(video, now)
+            const poseLandmarks = poseResult?.landmarks?.[0]
 
-            if (result?.faceLandmarks?.[0]) {
-              const landmarks = result.faceLandmarks[0]
-              const blendshapes = result.faceBlendshapes?.[0]?.categories
+            const store = useSessionStore.getState()
+            const calibrating = store.calibrationPhase === 'running'
+            const baseline = store.postureBaseline
+
+            if (faceResult?.faceLandmarks?.[0]) {
+              const landmarks = faceResult.faceLandmarks[0]
+              const blendshapes = faceResult.faceBlendshapes?.[0]?.categories
               const nose = landmarks[1]
 
-              const blink = blinkDetector.current.update(landmarks, Date.now())
+              const postureMetrics = estimatePosture(poseLandmarks, nose, calibrating ? null : baseline)
+
+              if (calibrating) {
+                postureCalibrator.current.addSample(postureMetrics)
+                const secondsLeft = postureCalibrator.current.getSecondsLeft(wallNow)
+
+                if (postureCalibrator.current.isComplete(wallNow)) {
+                  const { baseline: newBaseline, usedFallback } = postureCalibrator.current.finish()
+                  store.finishCalibration(newBaseline, usedFallback)
+                  postureCalibrator.current.reset()
+                } else {
+                  useSessionStore.setState({ calibrationSecondsLeft: secondsLeft })
+                }
+
+                if (canvas && showMesh) {
+                  const ctx = canvas.getContext('2d')
+                  if (ctx) {
+                    canvas.width = video.videoWidth
+                    canvas.height = video.videoHeight
+                    ctx.clearRect(0, 0, canvas.width, canvas.height)
+                    for (const p of landmarks) {
+                      ctx.beginPath()
+                      ctx.arc(p.x * canvas.width, p.y * canvas.height, 1.2, 0, Math.PI * 2)
+                      ctx.fillStyle = '#4ade80'
+                      ctx.fill()
+                    }
+                    if (poseLandmarks) {
+                      drawPostureSkeleton(
+                        ctx,
+                        poseLandmarks,
+                        nose,
+                        canvas.width,
+                        canvas.height,
+                        postureMetrics.postureIssue
+                      )
+                    }
+                  }
+                }
+
+                return void (rafId = requestAnimationFrame(loop))
+              }
+
+              const blink = blinkDetector.current.update(landmarks, wallNow)
               const faceRatio = estimateFaceRatio(landmarks)
               const distanceStatus = estimateDistanceStatus(faceRatio)
               const mood = expressionEstimator.current.update(
@@ -115,14 +200,28 @@ export function useVisionLoop(
                 nose,
                 blink.blinksPerMinute,
                 blink.ear,
-                Date.now()
+                wallNow
               )
               const fatigueLevel = computeFatigueLevel(
                 blink.blinksPerMinute,
                 mood,
                 distanceStatus
               )
-              const alertMessage = buildAlert(distanceStatus, mood, blink.blinksPerMinute)
+
+              const postureIssue = isRunning ? postureMetrics.postureIssue : 'unknown'
+              const alertMessage = isRunning
+                ? buildAlert(distanceStatus, postureIssue, mood, blink.blinksPerMinute)
+                : null
+
+              let showPostureHint = false
+              if (isRunning && isBadPosture(postureIssue)) {
+                if (!badPostureSince.current) badPostureSince.current = wallNow
+                if (wallNow - badPostureSince.current >= POSTURE_ALERT_HOLD_MS) {
+                  showPostureHint = true
+                }
+              } else {
+                badPostureSince.current = null
+              }
 
               if (
                 isRunning &&
@@ -143,6 +242,13 @@ export function useVisionLoop(
               }
               prevMood.current = mood
 
+              if (isRunning && isBadPosture(postureIssue) && prevPosture.current !== postureIssue) {
+                useSessionStore.setState((s) => ({
+                  postureAlerts: s.postureAlerts + 1
+                }))
+              }
+              prevPosture.current = postureIssue
+
               let showBreak = false
               let breakSecondsLeft = 0
               if (
@@ -152,12 +258,12 @@ export function useVisionLoop(
                 blink.blinksPerMinute < 12
               ) {
                 if (!breakEndTime.current) {
-                  breakEndTime.current = Date.now() + FATIGUE_BREAK_SECONDS * 1000
+                  breakEndTime.current = wallNow + FATIGUE_BREAK_SECONDS * 1000
                 }
                 showBreak = true
                 breakSecondsLeft = Math.max(
                   0,
-                  Math.ceil((breakEndTime.current - Date.now()) / 1000)
+                  Math.ceil((breakEndTime.current - wallNow) / 1000)
                 )
                 if (breakSecondsLeft <= 0) breakEndTime.current = null
               } else {
@@ -174,7 +280,13 @@ export function useVisionLoop(
                 fatigueLevel,
                 alertMessage,
                 showBreak,
-                breakSecondsLeft
+                breakSecondsLeft,
+                postureIssue,
+                neckAngleDeg: postureMetrics.neckAngleDeg,
+                shoulderTiltDeg: postureMetrics.shoulderTiltDeg,
+                forwardRatio: postureMetrics.forwardRatio,
+                postureScore: postureMetrics.postureScore,
+                showPostureHint
               })
 
               if (canvas && showMesh) {
@@ -193,12 +305,42 @@ export function useVisionLoop(
                     ctx.fillStyle = '#4ade80'
                     ctx.fill()
                   }
+                  if (poseLandmarks) {
+                    drawPostureSkeleton(
+                      ctx,
+                      poseLandmarks,
+                      nose,
+                      canvas.width,
+                      canvas.height,
+                      postureIssue
+                    )
+                  }
                 }
               } else if (canvas) {
                 const ctx = canvas.getContext('2d')
                 ctx?.clearRect(0, 0, canvas.width, canvas.height)
               }
             } else {
+              if (calibrating) {
+                postureCalibrator.current.addSample({
+                  neckAngleDeg: 0,
+                  shoulderTiltDeg: 0,
+                  forwardRatio: 0,
+                  shoulderWidth: 0,
+                  postureIssue: 'unknown',
+                  postureScore: 0,
+                  trackable: false
+                })
+                const secondsLeft = postureCalibrator.current.getSecondsLeft(wallNow)
+                if (postureCalibrator.current.isComplete(wallNow)) {
+                  const { baseline: newBaseline, usedFallback } = postureCalibrator.current.finish()
+                  useSessionStore.getState().finishCalibration(newBaseline, usedFallback)
+                  postureCalibrator.current.reset()
+                } else {
+                  useSessionStore.setState({ calibrationSecondsLeft: secondsLeft })
+                }
+              }
+
               updateMetrics({
                 blinkCount: blinkDetector.current.getCount(),
                 blinksPerMinute: 0,
@@ -207,9 +349,18 @@ export function useVisionLoop(
                 faceRatio: 0,
                 distanceStatus: 'none',
                 fatigueLevel: 0,
-                alertMessage: '未检测到人脸',
+                alertMessage: calibrating ? null : '未检测到人脸',
                 showBreak: false,
-                breakSecondsLeft: 0
+                breakSecondsLeft: 0,
+                postureIssue: 'unknown',
+                neckAngleDeg: 0,
+                shoulderTiltDeg: 0,
+                forwardRatio: 0,
+                postureScore: 0,
+                showPostureHint: false,
+                calibrationSecondsLeft: calibrating
+                  ? postureCalibrator.current.getSecondsLeft(wallNow)
+                  : undefined
               })
             }
           }
