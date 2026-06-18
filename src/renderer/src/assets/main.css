@@ -51,6 +51,130 @@ body {
   margin: 4px 0 0;
   font-size: 0.85rem;
   color: #8b9cb3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.side-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #243044;
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+.mode-badge-focus {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+.mode-badge-home {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+.mode-badge-library {
+  background: rgba(167, 139, 250, 0.15);
+  color: #c4b5fd;
+}
+
+.mode-badge-cafe {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fcd34d;
+}
+
+.context-mode-panel h2,
+.context-mode-panel h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.context-status-card .context-status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.78rem;
+  color: #a8b8cc;
+  margin-top: 6px;
+}
+
+.context-action-card {
+  padding: 12px;
+  border-radius: 10px;
+  background: #141c28;
+  border: 1px solid #243044;
+}
+
+.context-action-title {
+  font-size: 0.8rem;
+  color: #8b9cb3;
+  margin-bottom: 8px;
+}
+
+.context-action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.context-select,
+.context-input {
+  background: #0f1419;
+  border: 1px solid #243044;
+  color: #e7ecf3;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+}
+
+.context-input {
+  width: 72px;
+}
+
+.context-input-suffix {
+  font-size: 0.8rem;
+  color: #8b9cb3;
+}
+
+.context-rules h3 {
+  font-size: 0.85rem;
+  color: #8b9cb3;
+}
+
+.context-rules ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.context-rules li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #243044;
+  font-size: 0.75rem;
+  color: #a8b8cc;
+}
+
+.context-rules li:last-child {
+  border-bottom: none;
 }
 
 .app-main {
