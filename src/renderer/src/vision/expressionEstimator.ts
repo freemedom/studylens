@@ -71,16 +71,26 @@ export class ExpressionEstimator {
     this.headHistory = this.headHistory.filter((p) => now - p.t <= 2000)
 
     // Total path length of the nose over the window (requires ≥3 points to be meaningful).
+    // headJitter: cumulative Euclidean distance the nose tip travels across consecutive
+    // frames in the 2 s window. Each hop is sqrt((Δx)² + (Δy)²) in normalized [0,1] image
+    // coords — a proxy for head fidgeting / looking around without a dedicated pose model.
+    // Require >2 samples so at least two frame-to-frame segments exist before scoring.
     let headJitter = 0
     if (this.headHistory.length > 2) {
       for (let i = 1; i < this.headHistory.length; i++) {
         const prev = this.headHistory[i - 1]
         const curr = this.headHistory[i]
+        // Math.hypot(dx, dy) = straight-line distance between successive nose positions.
         headJitter += Math.hypot(curr.x - prev.x, curr.y - prev.y)
       }
     }
 
     // Aggregate blendshape groups; each score is already in [0, 1], sums can exceed 1.
+    // Brow tension proxy (MediaPipe ARKit blendshapes, each score in [0, 1]):
+    // - browDownLeft:  left outer brow pulls downward (furrow / frown on that side).
+    // - browDownRight: right outer brow pulls downward (mirror of browDownLeft).
+    // - browInnerUp:   inner brow corners raise (often seen with concentration or worry).
+    // Summed score > 1.2 suggests strained or restless expression → mood 'restless'.
     const brow =
       blendScore(blendshapes, 'browDownLeft') +
       blendScore(blendshapes, 'browDownRight') +

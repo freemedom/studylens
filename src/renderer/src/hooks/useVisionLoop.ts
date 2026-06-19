@@ -12,15 +12,10 @@ import { estimatePosture, postureAlertMessage } from '../vision/postureEstimator
 import { detectPose, initPoseLandmarker } from '../vision/poseLandmarker'
 import { requestCameraStream, VisionInitError } from '../utils/visionInitError'
 
-function computeFatigueLevel(
-  blinksPerMinute: number,
-  mood: Mood,
-  distanceStatus: DistanceStatus
-): number {
+function computeFatigueLevel(blinksPerMinute: number, mood: Mood): number {
   let level = 0
   if (blinksPerMinute < 10) level += 0.4
   if (mood === 'tired') level += 0.4
-  if (distanceStatus === 'too_near') level += 0.2
   return Math.min(level, 1)
 }
 
@@ -206,11 +201,7 @@ export function useVisionLoop(
                 blink.ear,
                 wallNow
               )
-              const fatigueLevel = computeFatigueLevel(
-                blink.blinksPerMinute,
-                mood,
-                distanceStatus
-              )
+              const fatigueLevel = computeFatigueLevel(blink.blinksPerMinute, mood)
 
               const postureIssue = isRunning ? postureMetrics.postureIssue : 'unknown'
               const alertMessage = isRunning

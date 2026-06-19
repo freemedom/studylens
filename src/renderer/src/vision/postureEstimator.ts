@@ -1,3 +1,32 @@
+/**
+ * Upper-body posture estimator from MediaPipe Pose + Face landmarks.
+ *
+ * Called every vision frame from `useVisionLoop` with pose landmarks and an optional
+ * face nose (landmark index 1). Compared against a user-specific `PostureBaseline`
+ * from a 5 s calibration (`PostureCalibrator`) to detect slouching / tilt / uneven shoulders.
+ *
+ * ## Landmarks used (see `poseLandmarks.ts`)
+ * - Pose nose (0), left shoulder (11), right shoulder (12)
+ * - Face nose preferred over pose nose when both are available (finer head position)
+ *
+ * ## Metrics computed
+ * 1. **neckAngleDeg** — angle of the nose→shoulder-mid vector from vertical (degrees).
+ *    Larger values suggest forward head / neck flexion.
+ * 2. **shoulderTiltDeg** — angle of the line between shoulders in the image plane.
+ *    Deviation from baseline indicates head or torso lean.
+ * 3. **forwardRatio** — (nose.y − shoulderMid.y) / shoulderWidth; head drop relative to shoulders.
+ * 4. **shoulderUnevenRatio** — vertical shoulder height difference / shoulderWidth.
+ *
+ * ## Classification (first match wins, vs personal baseline)
+ * | Issue | Condition |
+ * |-------|-----------|
+ * | forward_head | neck angle or forwardRatio exceeds baseline + delta |
+ * | shoulder_uneven | shoulderUnevenRatio > SHOULDER_UNEVEN_RATIO |
+ * | head_tilt | shoulder tilt differs from baseline by > HEAD_TILT_DELTA |
+ * | good | none of the above |
+ *
+ * Without baseline (during calibration), returns raw metrics with `postureIssue: 'unknown'`.
+ */
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision'
 import {
   FORWARD_HEAD_DELTA,
@@ -14,6 +43,7 @@ import {
 } from '../constants/poseLandmarks'
 import type { PostureBaseline, PostureIssue, PostureMetrics } from '../types/metrics'
 
+/** Returned when pose is missing, shoulders too narrow, or landmarks not visible. */
 const UNKNOWN_METRICS: PostureMetrics = {
   neckAngleDeg: 0,
   shoulderTiltDeg: 0,
@@ -24,6 +54,7 @@ const UNKNOWN_METRICS: PostureMetrics = {
   trackable: false
 }
 
+/** MediaPipe visibility score and in-bounds check; filters occluded / off-frame points. */
 function landmarkVisible(p: NormalizedLandmark): boolean {
   const visibility = p.visibility ?? 1
   return (
@@ -35,6 +66,7 @@ function landmarkVisible(p: NormalizedLandmark): boolean {
   )
 }
 
+/** Angle (degrees) between vector (dx, dy) and straight up. Image y grows downward, so -dy is "up". */
 function angleDegFromVertical(dx: number, dy: number): number {
   const len = Math.hypot(dx, dy)
   if (len < 1e-6) return 0
@@ -42,10 +74,14 @@ function angleDegFromVertical(dx: number, dy: number): number {
   return (Math.acos(cos) * 180) / Math.PI
 }
 
+/** Shoulder line angle in the image plane (0° = level shoulders). */
 function shoulderTiltDeg(left: NormalizedLandmark, right: NormalizedLandmark): number {
   return (Math.atan2(right.y - left.y, right.x - left.x) * 180) / Math.PI
 }
 
+/**
+ * Pick the worst posture issue vs personal baseline. Priority: forward head > uneven shoulders > head tilt.
+ */
 function classifyIssue(
   neckAngleDeg: number,
   shoulderTiltDeg: number,
@@ -65,6 +101,10 @@ function classifyIssue(
   return 'good'
 }
 
+/**
+ * Continuous 0–1 deviation score: max normalized excess across all four signals, capped at 1.
+ * Used for the posture bar in MetricsPanel.
+ */
 function computePostureScore(
   neckAngleDeg: number,
   shoulderTiltDeg: number,
@@ -80,6 +120,13 @@ function computePostureScore(
   return Math.min(1, Math.max(neckExcess, forwardExcess, tiltExcess, unevenExcess))
 }
 
+/**
+ * Estimate posture metrics for one frame.
+ *
+ * @param poseLandmarks — MediaPipe Pose 33-point set (normalized [0,1] coords).
+ * @param faceNose — Face Landmarker nose tip; preferred over pose nose when present.
+ * @param baseline — Personal good posture from calibration; null during calibration window.
+ */
 export function estimatePosture(
   poseLandmarks: NormalizedLandmark[] | undefined,
   faceNose: { x: number; y: number } | undefined,
@@ -100,6 +147,7 @@ export function estimatePosture(
   const shoulderMidY = (leftShoulder.y + rightShoulder.y) / 2
   const shoulderWidth = Math.hypot(rightShoulder.x - leftShoulder.x, rightShoulder.y - leftShoulder.y)
 
+  // Reject face-only framing: shoulders too close together in normalized coords.
   if (shoulderWidth < MIN_SHOULDER_WIDTH_RATIO) return UNKNOWN_METRICS
 
   const nose = faceNose ?? poseNose
@@ -107,9 +155,11 @@ export function estimatePosture(
   const neckDy = nose.y - shoulderMidY
   const neckAngleDeg = angleDegFromVertical(neckDx, neckDy)
   const tiltDeg = shoulderTiltDeg(leftShoulder, rightShoulder)
+  // How far the nose sits below shoulder midline, normalized by shoulder span.
   const forwardRatio = Math.max(0, nose.y - shoulderMidY) / shoulderWidth
   const shoulderUnevenRatio = Math.abs(leftShoulder.y - rightShoulder.y) / shoulderWidth
 
+  // Calibration phase: collect raw angles only; no issue/score until baseline exists.
   if (!baseline) {
     return {
       neckAngleDeg,
@@ -148,6 +198,7 @@ export function estimatePosture(
   }
 }
 
+/** User-facing alert copy for `buildAlert` in useVisionLoop (Chinese UI strings). */
 export function postureAlertMessage(issue: PostureIssue): string | null {
   switch (issue) {
     case 'forward_head':
