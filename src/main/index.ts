@@ -4,6 +4,17 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getWifiSSID } from './context/wifiReader'
 
+/** Chromium on Windows uses Google's network geolocation — requires an API key or requests return 403. */
+const googleApiKey = process.env.GOOGLE_API_KEY ?? process.env.STUDYLENS_GOOGLE_API_KEY
+console.log('googleApiKey', googleApiKey)
+if (googleApiKey) {
+  app.commandLine.appendSwitch('google-api-key', googleApiKey)
+}
+
+function isGeolocationConfigured(): boolean {
+  return Boolean(googleApiKey) || process.platform === 'darwin'
+}
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -58,6 +69,8 @@ app.whenReady().then(() => {
   // Context mode: renderer calls window.api.getWifiSSID() → preload invoke → this handler.
   // Main process reads the OS WiFi SSID (netsh / networksetup / nmcli) and returns string | null.
   ipcMain.handle('context:getWifiSSID', async () => getWifiSSID())
+  ipcMain.handle('context:getPlatform', () => process.platform)
+  ipcMain.handle('context:isGeolocationConfigured', () => isGeolocationConfigured())
 
   createWindow()
 

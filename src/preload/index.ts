@@ -14,7 +14,10 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 /** StudyLens-specific APIs safe to call from the React renderer. */
 const api = {
-  getWifiSSID: (): Promise<string | null> => ipcRenderer.invoke('context:getWifiSSID')
+  getWifiSSID: (): Promise<string | null> => ipcRenderer.invoke('context:getWifiSSID'),
+  getPlatform: (): Promise<NodeJS.Platform> => ipcRenderer.invoke('context:getPlatform'),
+  isGeolocationConfigured: (): Promise<boolean> =>
+    ipcRenderer.invoke('context:isGeolocationConfigured')
 }
 
 // With context isolation (recommended), only explicitly exposed globals reach the page.
