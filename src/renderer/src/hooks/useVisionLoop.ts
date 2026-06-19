@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { FATIGUE_BREAK_SECONDS, POSTURE_ALERT_HOLD_MS } from '../constants/thresholds'
 import { useSessionStore } from '../store/sessionStore'
-import type { DistanceStatus, Mood, PostureIssue } from '../types/metrics'
+import type { DistanceStatus, Mood, PostureBaseline, PostureIssue, PostureMetrics } from '../types/metrics'
 import { BlinkDetector } from '../vision/blinkDetector'
 import { drawPostureSkeleton } from '../vision/drawPostureSkeleton'
 import { estimateDistanceStatus, estimateFaceRatio } from '../vision/distanceEstimator'
@@ -9,6 +9,11 @@ import { ExpressionEstimator } from '../vision/expressionEstimator'
 import { detectFace, initFaceLandmarker } from '../vision/faceLandmarker'
 import { PostureCalibrator } from '../vision/postureCalibrator'
 import { estimatePosture, postureAlertMessage } from '../vision/postureEstimator'
+import {
+  buildPostureDebugSnapshot,
+  isPostureDebugEnabled,
+  POSTURE_DEBUG_LOG_MS
+} from '../vision/postureDebug'
 import { detectPose, initPoseLandmarker } from '../vision/poseLandmarker'
 import { requestCameraStream, VisionInitError } from '../utils/visionInitError'
 
@@ -38,6 +43,38 @@ function isBadPosture(issue: PostureIssue): boolean {
   return issue !== 'good' && issue !== 'unknown'
 }
 
+function maybeLogPostureDebug(
+  metrics: PostureMetrics,
+  baseline: PostureBaseline | null,
+  wallNow: number,
+  lastLogAt: { current: number },
+  prevIssue: { current: PostureIssue }
+): void {
+  if (!isPostureDebugEnabled()) return
+
+  const snapshot = buildPostureDebugSnapshot(metrics, baseline)
+  const issue = metrics.postureIssue
+
+  if (issue !== prevIssue.current) {
+    console.warn('[StudyLens:posture] issue changed', {
+      from: prevIssue.current,
+      to: issue,
+      snapshot
+    })
+    prevIssue.current = issue
+  }
+
+  if (wallNow - lastLogAt.current >= POSTURE_DEBUG_LOG_MS) {
+    console.log('[StudyLens:posture]', snapshot)
+    lastLogAt.current = wallNow
+  }
+}
+
+function logCalibrationComplete(baseline: PostureBaseline, usedFallback: boolean): void {
+  if (!isPostureDebugEnabled()) return
+  console.info('[StudyLens:posture] calibration complete', { baseline, usedFallback })
+}
+
 export function useVisionLoop(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>
@@ -51,6 +88,8 @@ export function useVisionLoop(
   const prevMood = useRef<Mood>('unknown')
   const prevPosture = useRef<PostureIssue>('unknown')
   const badPostureSince = useRef<number | null>(null)
+  const lastPostureLogAt = useRef(0)
+  const prevPostureDebugIssue = useRef<PostureIssue>('unknown')
   const loadingRef = useRef(true)
 
   const isRunning = useSessionStore((s) => s.isRunning)
@@ -150,6 +189,13 @@ export function useVisionLoop(
               const nose = landmarks[1]
 
               const postureMetrics = estimatePosture(poseLandmarks, nose, calibrating ? null : baseline)
+              maybeLogPostureDebug(
+                postureMetrics,
+                calibrating ? null : baseline,
+                wallNow,
+                lastPostureLogAt,
+                prevPostureDebugIssue
+              )
 
               if (calibrating) {
                 postureCalibrator.current.addSample(postureMetrics)
@@ -157,6 +203,7 @@ export function useVisionLoop(
 
                 if (postureCalibrator.current.isComplete(wallNow)) {
                   const { baseline: newBaseline, usedFallback } = postureCalibrator.current.finish()
+                  logCalibrationComplete(newBaseline, usedFallback)
                   store.finishCalibration(newBaseline, usedFallback)
                   postureCalibrator.current.reset()
                 } else {
@@ -322,6 +369,7 @@ export function useVisionLoop(
                   shoulderTiltDeg: 0,
                   forwardRatio: 0,
                   shoulderWidth: 0,
+                  shoulderUnevenRatio: 0,
                   postureIssue: 'unknown',
                   postureScore: 0,
                   trackable: false
@@ -329,6 +377,7 @@ export function useVisionLoop(
                 const secondsLeft = postureCalibrator.current.getSecondsLeft(wallNow)
                 if (postureCalibrator.current.isComplete(wallNow)) {
                   const { baseline: newBaseline, usedFallback } = postureCalibrator.current.finish()
+                  logCalibrationComplete(newBaseline, usedFallback)
                   useSessionStore.getState().finishCalibration(newBaseline, usedFallback)
                   postureCalibrator.current.reset()
                 } else {

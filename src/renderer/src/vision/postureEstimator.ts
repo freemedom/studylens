@@ -49,6 +49,7 @@ const UNKNOWN_METRICS: PostureMetrics = {
   shoulderTiltDeg: 0,
   forwardRatio: 0,
   shoulderWidth: 0,
+  shoulderUnevenRatio: 0,
   postureIssue: 'unknown',
   postureScore: 0,
   trackable: false
@@ -166,6 +167,7 @@ export function estimatePosture(
       shoulderTiltDeg: tiltDeg,
       forwardRatio,
       shoulderWidth,
+      shoulderUnevenRatio,
       postureIssue: 'unknown',
       postureScore: 0,
       trackable: true
@@ -192,6 +194,7 @@ export function estimatePosture(
     shoulderTiltDeg: tiltDeg,
     forwardRatio,
     shoulderWidth,
+    shoulderUnevenRatio,
     postureIssue,
     postureScore,
     trackable: true

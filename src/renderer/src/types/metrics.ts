@@ -22,6 +22,7 @@ export interface PostureMetrics {
   shoulderTiltDeg: number
   forwardRatio: number
   shoulderWidth: number
+  shoulderUnevenRatio: number
   postureIssue: PostureIssue
   postureScore: number
   trackable: boolean
