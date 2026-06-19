@@ -119,22 +119,17 @@ body {
   color: #93c5fd;
 }
 
-.mode-badge-focus {
-  background: rgba(59, 130, 246, 0.15);
-  color: #93c5fd;
-}
-
-.mode-badge-home {
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
-}
-
-.mode-badge-library {
+.mode-badge-strict {
   background: rgba(167, 139, 250, 0.15);
   color: #c4b5fd;
 }
 
-.mode-badge-cafe {
+.mode-badge-study {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+.mode-badge-relax {
   background: rgba(251, 191, 36, 0.15);
   color: #fcd34d;
 }

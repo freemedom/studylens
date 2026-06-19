@@ -36,10 +36,20 @@ interface ContextState {
   loadPersisted: () => void
 }
 
+function normalizeStudyMode(value: string): StudyMode {
+  if (value === 'strict' || value === 'study' || value === 'relax') return value
+  if (value === 'focus') return 'study'
+  if (value === 'library') return 'strict'
+  if (value === 'home' || value === 'cafe') return 'relax'
+  return 'relax'
+}
+
 function loadRules(): ContextRule[] {
   try {
     const raw = localStorage.getItem(CONTEXT_RULES_STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as ContextRule[]) : []
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as ContextRule[]
+    return parsed.map((rule) => ({ ...rule, mode: normalizeStudyMode(rule.mode) }))
   } catch {
     return []
   }
@@ -52,7 +62,7 @@ function saveRules(rules: ContextRule[]): void {
 function loadManualMode(): StudyMode | null {
   const raw = localStorage.getItem(MANUAL_MODE_STORAGE_KEY)
   if (!raw || raw === 'null') return null
-  return raw as StudyMode
+  return normalizeStudyMode(raw)
 }
 
 function saveManualMode(mode: StudyMode | null): void {
@@ -78,7 +88,7 @@ function recomputeMatch(state: {
 }
 
 export const useContextStore = create<ContextState>((set) => ({
-  activeMode: 'focus',
+  activeMode: 'relax',
   contextSource: 'default',
   matchedRuleId: null,
   currentWifi: null,

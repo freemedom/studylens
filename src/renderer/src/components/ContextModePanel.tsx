@@ -25,11 +25,26 @@ export default function ContextModePanel(): React.JSX.Element {
   const removeRule = useContextStore((s) => s.removeRule)
   const setManualMode = useContextStore((s) => s.setManualMode)
 
-  const [wifiMode, setWifiMode] = useState<StudyMode>('library')
-  const [locationMode, setLocationMode] = useState<StudyMode>('home')
+  // Local form state for "add rule" / manual-lock controls (not the global `activeMode`).
+  // Defaults pre-select sensible modes before the user clicks "添加规则" or "锁定".
+  /**
+   * React useState — component-local state that survives re-renders.
+   *
+   * Syntax: const [value, setValue] = useState(initial)
+   * - `useState('study')` creates state with initial value `'study'`.
+   * - Returns a 2-item array; we destructure it into:
+   *     wifiMode      — current value (read in JSX, e.g. <select value={wifiMode}>)
+   *     setWifiMode   — updater function; call it with the new value to change
+   *                     wifiMode and trigger a re-render (e.g. on dropdown change).
+   * - `setWifiMode` is NOT called on this line — only declared. It runs later in
+   *   onChange={(e) => setWifiMode(e.target.value as StudyMode)}.
+   *
+   * This is form UI state only; global active mode lives in contextStore.
+   */
+  const [wifiMode, setWifiMode] = useState<StudyMode>('study')
+  const [locationMode, setLocationMode] = useState<StudyMode>('study')
   const [radiusM, setRadiusM] = useState(DEFAULT_LOCATION_RADIUS_M)
-  const [manualSelection, setManualSelection] = useState<StudyMode>('focus')
-
+  const [manualSelection, setManualSelection] = useState<StudyMode>('study')
   const matchedRule = rules.find((rule) => rule.id === matchedRuleId) ?? null
 
   const sourceText =

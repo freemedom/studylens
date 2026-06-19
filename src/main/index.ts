@@ -5,7 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { getWifiSSID } from './context/wifiReader'
 
 /** Chromium on Windows uses Google's network geolocation — requires an API key or requests return 403. */
-const googleApiKey = process.env.GOOGLE_API_KEY ?? process.env.STUDYLENS_GOOGLE_API_KEY
+const googleApiKey = process.env.GOOGLE_API_KEY ?? process.env.STUDYLENS_GOOGLE_API_KEY // restart powershell
 console.log('googleApiKey', googleApiKey)
 if (googleApiKey) {
   app.commandLine.appendSwitch('google-api-key', googleApiKey)

@@ -5,7 +5,7 @@ import type {
   StudyMode
 } from '../types/context'
 
-const DEFAULT_MODE: StudyMode = 'focus'
+const DEFAULT_MODE: StudyMode = 'relax'
 
 function haversineMeters(a: GeoPoint, b: GeoPoint): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180

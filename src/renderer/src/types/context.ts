@@ -1,4 +1,4 @@
-export type StudyMode = 'focus' | 'home' | 'library' | 'cafe'
+export type StudyMode = 'strict' | 'study' | 'relax'
 
 /**
  * String literal union — `ContextSource` may only be one of these four strings (not any string).

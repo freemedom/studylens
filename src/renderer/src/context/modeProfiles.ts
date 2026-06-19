@@ -1,10 +1,9 @@
 import type { StudyMode } from '../types/context'
 
 const MODE_LABELS: Record<StudyMode, string> = {
-  focus: '专注',
-  home: '居家',
-  library: '图书馆',
-  cafe: '咖啡馆'
+  strict: '严格',
+  study: '学习',
+  relax: '休闲'
 }
 
 export interface ModeProfile {
@@ -26,4 +25,4 @@ export function getModeLabel(mode: StudyMode): string {
   return MODE_LABELS[mode]
 }
 
-export const STUDY_MODES: StudyMode[] = ['focus', 'home', 'library', 'cafe']
+export const STUDY_MODES: StudyMode[] = ['strict', 'study', 'relax']
