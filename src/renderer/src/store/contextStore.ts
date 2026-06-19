@@ -159,6 +159,9 @@ export const useContextStore = create<ContextState>((set) => ({
     })
   },
 
+  // Called by useContextDetector when a new SSID is polled from the main process.
+  // Updates `currentWifi`, then re-runs matchContextRule so activeMode / contextSource
+  // change immediately if the network matches a saved WiFi rule (unless manualMode is set).
   setCurrentWifi: (ssid) => {
     set((state) => {
       const next = { ...state, currentWifi: ssid }

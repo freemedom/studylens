@@ -7,18 +7,30 @@ import type {
 
 const DEFAULT_MODE: StudyMode = 'relax'
 
+/**
+ * Great-circle distance between two WGS84 coordinates (Haversine formula).
+ * Used to test whether the user's current GPS position falls inside a
+ * location rule's circular geofence (see `matchLocationRule`).
+ *
+ * @returns Distance in meters (Earth mean radius ≈ 6_371_000 m).
+ */
 function haversineMeters(a: GeoPoint, b: GeoPoint): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180
+
+  // Latitude/longitude deltas in radians.
   const dLat = toRad(b.lat - a.lat)
   const dLng = toRad(b.lng - a.lng)
   const lat1 = toRad(a.lat)
   const lat2 = toRad(b.lat)
+
+  // Haversine intermediate value `h` ∈ [0, 1]: squared half-chord length on the unit sphere.
   const h =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+
+  // Central angle (radians) × Earth radius → arc length in meters.
   return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
 }
-
 function matchWifiRule(rules: ContextRule[], ssid: string | null): ContextRule | null {
   if (!ssid) return null
   const normalized = ssid.trim().toLowerCase()

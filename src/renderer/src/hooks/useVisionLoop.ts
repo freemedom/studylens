@@ -132,9 +132,13 @@ export function useVisionLoop(
 
           const video = videoRef.current
           const canvas = canvasRef.current
+          // `now` — monotonic high-res clock (ms since page load). Required by MediaPipe
+          // VIDEO mode (detectFace/detectPose) and to skip duplicate RAF ticks.
           const now = performance.now()
+          // `wallNow` — real-world epoch ms. Used for blink history, calibration/break
+          // countdowns, and posture-hold debounce (compare with Date-based deadlines).
           const wallNow = Date.now()
-
+          
           if (video.readyState >= 2 && now !== lastTimestamp.current) {
             lastTimestamp.current = now
             const faceResult = detectFace(video, now)
