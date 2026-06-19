@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { getModeLabel, STUDY_MODES } from '../context/modeProfiles'
+import { buildOpenStreetMapUrl } from '../context/openStreetMapUrl'
 import { DEFAULT_LOCATION_RADIUS_M } from '../constants/thresholds'
 import { useContextStore } from '../store/contextStore'
 import type { ContextRule, StudyMode } from '../types/context'
@@ -80,6 +81,16 @@ export default function ContextModePanel(): React.JSX.Element {
               : locationError ?? '暂无坐标'}
           </span>
         </div>
+        {currentLocation && (
+          <a
+            className="context-map-link"
+            href={buildOpenStreetMapUrl(currentLocation.lat, currentLocation.lng)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            在地图中查看当前位置
+          </a>
+        )}
       </div>
 
       <div className="context-action-card">

@@ -4,6 +4,8 @@ export type StudyMode = 'strict' | 'study' | 'relax'
  * String literal union — `ContextSource` may only be one of these four strings (not any string).
  * TypeScript narrows types in `switch`/`if` and flags typos at compile time.
  * Describes *how* the active study mode was chosen (see `matchRule.ts` priority).
+ * Describes which signal *attributed* the active mode in UI (see `matchRule.ts`):
+ * manual lock; or the representative WiFi/location rule after strict > study > relax merge.
  */
 export type ContextSource = 'wifi' | 'location' | 'manual' | 'default'
 export type WifiContextRule = {

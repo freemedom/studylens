@@ -1,6 +1,8 @@
+import { pickStrictestMode } from './modeProfiles'
 import type {
   ContextMatchResult,
   ContextRule,
+  ContextSource,
   GeoPoint,
   StudyMode
 } from '../types/context'
@@ -10,7 +12,7 @@ const DEFAULT_MODE: StudyMode = 'relax'
 /**
  * Great-circle distance between two WGS84 coordinates (Haversine formula).
  * Used to test whether the user's current GPS position falls inside a
- * location rule's circular geofence (see `matchLocationRule`).
+ * location rule's circular geofence (see `matchLocationRules`).
  *
  * @returns Distance in meters (Earth mean radius ≈ 6_371_000 m).
  */
@@ -31,6 +33,7 @@ function haversineMeters(a: GeoPoint, b: GeoPoint): number {
   // Central angle (radians) × Earth radius → arc length in meters.
   return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
 }
+
 function matchWifiRule(rules: ContextRule[], ssid: string | null): ContextRule | null {
   if (!ssid) return null
   const normalized = ssid.trim().toLowerCase()
@@ -41,14 +44,34 @@ function matchWifiRule(rules: ContextRule[], ssid: string | null): ContextRule |
   )
 }
 
-function matchLocationRule(rules: ContextRule[], location: GeoPoint | null): ContextRule | null {
-  if (!location) return null
+function matchLocationRules(rules: ContextRule[], location: GeoPoint | null): ContextRule[] {
+  if (!location) return []
+  const matched: ContextRule[] = []
   for (const rule of rules) {
     if (rule.kind !== 'location') continue
     const distance = haversineMeters(location, { lat: rule.lat, lng: rule.lng })
-    if (distance <= rule.radiusM) return rule
+    if (distance <= rule.radiusM) matched.push(rule)
   }
-  return null
+  return matched
+}
+
+function collectMatchingRules(
+  rules: ContextRule[],
+  ssid: string | null,
+  location: GeoPoint | null
+): ContextRule[] {
+  const matched: ContextRule[] = []
+  const wifi = matchWifiRule(rules, ssid)
+  if (wifi) matched.push(wifi)
+  matched.push(...matchLocationRules(rules, location))
+  return matched
+}
+
+/** Pick one rule for UI attribution when several match the winning mode. */
+function pickRepresentativeRule(matched: ContextRule[], activeMode: StudyMode): ContextRule {
+  const withWinningMode = matched.filter((rule) => rule.mode === activeMode)
+  const pool = withWinningMode.length > 0 ? withWinningMode : matched
+  return pool.find((rule) => rule.kind === 'wifi') ?? pool[0]
 }
 
 export function matchContextRule(input: {
@@ -65,27 +88,27 @@ export function matchContextRule(input: {
     }
   }
 
-  const wifiRule = matchWifiRule(input.rules, input.currentWifi)
-  if (wifiRule) {
+  const matched = collectMatchingRules(
+    input.rules,
+    input.currentWifi,
+    input.currentLocation
+  )
+
+  if (matched.length === 0) {
     return {
-      activeMode: wifiRule.mode,
-      contextSource: 'wifi',
-      matchedRuleId: wifiRule.id
+      activeMode: DEFAULT_MODE,
+      contextSource: 'default',
+      matchedRuleId: null
     }
   }
 
-  const locationRule = matchLocationRule(input.rules, input.currentLocation)
-  if (locationRule) {
-    return {
-      activeMode: locationRule.mode,
-      contextSource: 'location',
-      matchedRuleId: locationRule.id
-    }
-  }
+  const activeMode = pickStrictestMode(matched.map((rule) => rule.mode))
+  const representative = pickRepresentativeRule(matched, activeMode)
+  const contextSource: ContextSource = representative.kind === 'wifi' ? 'wifi' : 'location'
 
   return {
-    activeMode: DEFAULT_MODE,
-    contextSource: 'default',
-    matchedRuleId: null
+    activeMode,
+    contextSource,
+    matchedRuleId: representative.id
   }
 }

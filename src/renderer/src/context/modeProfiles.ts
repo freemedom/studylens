@@ -26,3 +26,13 @@ export function getModeLabel(mode: StudyMode): string {
 }
 
 export const STUDY_MODES: StudyMode[] = ['strict', 'study', 'relax']
+
+/** Strictest-first order for resolving conflicts among matched rules. */
+export const MODE_PRIORITY: StudyMode[] = ['strict', 'study', 'relax']
+
+export function pickStrictestMode(modes: StudyMode[]): StudyMode {
+  for (const mode of MODE_PRIORITY) {
+    if (modes.includes(mode)) return mode
+  }
+  return 'relax'
+}
