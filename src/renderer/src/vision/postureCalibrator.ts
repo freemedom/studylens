@@ -1,7 +1,9 @@
 import {
   DEFAULT_FORWARD_RATIO,
+  DEFAULT_HEAD_OFFSET_RATIO,
   DEFAULT_NECK_ANGLE_DEG,
   DEFAULT_SHOULDER_TILT_DEG,
+  DEFAULT_SHOULDER_UNEVEN_RATIO,
   POSTURE_CALIBRATION_MS
 } from '../constants/thresholds'
 import type { PostureBaseline, PostureMetrics } from '../types/metrics'
@@ -10,6 +12,8 @@ interface CalibrationSample {
   neckAngleDeg: number
   shoulderTiltDeg: number
   forwardRatio: number
+  headOffsetRatio: number
+  shoulderUnevenRatio: number
 }
 
 function median(values: number[]): number {
@@ -46,7 +50,9 @@ export class PostureCalibrator {
     this.samples.push({
       neckAngleDeg: metrics.neckAngleDeg,
       shoulderTiltDeg: metrics.shoulderTiltDeg,
-      forwardRatio: metrics.forwardRatio
+      forwardRatio: metrics.forwardRatio,
+      headOffsetRatio: metrics.headOffsetRatio,
+      shoulderUnevenRatio: metrics.shoulderUnevenRatio
     })
   }
 
@@ -70,7 +76,9 @@ export class PostureCalibrator {
         baseline: {
           neckAngleDeg: DEFAULT_NECK_ANGLE_DEG,
           shoulderTiltDeg: DEFAULT_SHOULDER_TILT_DEG,
-          forwardRatio: DEFAULT_FORWARD_RATIO
+          forwardRatio: DEFAULT_FORWARD_RATIO,
+          headOffsetRatio: DEFAULT_HEAD_OFFSET_RATIO,
+          shoulderUnevenRatio: DEFAULT_SHOULDER_UNEVEN_RATIO
         },
         usedFallback: true
       }
@@ -80,7 +88,9 @@ export class PostureCalibrator {
       baseline: {
         neckAngleDeg: median(this.samples.map((s) => s.neckAngleDeg)),
         shoulderTiltDeg: median(this.samples.map((s) => s.shoulderTiltDeg)),
-        forwardRatio: median(this.samples.map((s) => s.forwardRatio))
+        forwardRatio: median(this.samples.map((s) => s.forwardRatio)),
+        headOffsetRatio: median(this.samples.map((s) => s.headOffsetRatio)),
+        shoulderUnevenRatio: median(this.samples.map((s) => s.shoulderUnevenRatio))
       },
       usedFallback: false
     }

@@ -33,6 +33,7 @@ interface SessionState {
   neckAngleDeg: number
   shoulderTiltDeg: number
   forwardRatio: number
+  headOffsetRatio: number
   postureScore: number
   postureAlerts: number
   showPostureHint: boolean
@@ -63,6 +64,7 @@ interface SessionState {
     neckAngleDeg: number
     shoulderTiltDeg: number
     forwardRatio: number
+    headOffsetRatio: number
     postureScore: number
     showPostureHint: boolean
     calibrationSecondsLeft?: number
@@ -109,6 +111,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   neckAngleDeg: 0,
   shoulderTiltDeg: 0,
   forwardRatio: 0,
+  headOffsetRatio: 0,
   postureScore: 0,
   postureAlerts: 0,
   showPostureHint: false,

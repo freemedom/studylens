@@ -50,6 +50,8 @@ export default function MetricsPanel(): React.JSX.Element {
   const postureTrackable = useSessionStore((s) => s.postureTrackable)
   const neckAngleDeg = useSessionStore((s) => s.neckAngleDeg)
   const shoulderTiltDeg = useSessionStore((s) => s.shoulderTiltDeg)
+  const forwardRatio = useSessionStore((s) => s.forwardRatio)
+  const headOffsetRatio = useSessionStore((s) => s.headOffsetRatio)
   const postureScore = useSessionStore((s) => s.postureScore)
   const postureBaseline = useSessionStore((s) => s.postureBaseline)
   const calibrationMessage = useSessionStore((s) => s.calibrationMessage)
@@ -112,6 +114,16 @@ export default function MetricsPanel(): React.JSX.Element {
             {postureBaseline.shoulderTiltDeg.toFixed(1)}°
           </div>
         )}
+        <div className="metric-hint">
+          前倾比 {forwardRatio.toFixed(3)} / 歪头偏移 {headOffsetRatio.toFixed(3)}
+          {postureBaseline && (
+            <>
+              {' '}
+              (基准 {postureBaseline.forwardRatio.toFixed(3)} /{' '}
+              {postureBaseline.headOffsetRatio.toFixed(3)})
+            </>
+          )}
+        </div>
       </div>
       <div className="metric-card">
         <div className="metric-label">姿势偏差</div>

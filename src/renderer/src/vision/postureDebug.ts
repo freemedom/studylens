@@ -8,10 +8,9 @@
  * Then refresh or restart the session. Open Electron DevTools to see logs.
  */
 import {
-  FORWARD_HEAD_DELTA,
   FORWARD_RATIO_DELTA,
-  HEAD_TILT_DELTA,
-  SHOULDER_UNEVEN_RATIO
+  HEAD_OFFSET_DELTA,
+  SHOULDER_UNEVEN_DELTA
 } from '../constants/thresholds'
 import { MIN_SHOULDER_WIDTH_RATIO } from '../constants/poseLandmarks'
 import type { ActivePostureIssue, PostureBaseline, PostureMetrics } from '../types/metrics'
@@ -39,20 +38,19 @@ export interface PostureDebugSnapshot {
   neckAngleDeg: number
   shoulderTiltDeg: number
   forwardRatio: number
+  headOffsetRatio: number
   shoulderUnevenRatio: number
   baseline: PostureBaseline | null
-  deltas: { neck: number; forward: number; tilt: number; uneven: number }
+  deltas: { forward: number; headOffset: number; uneven: number }
   thresholds: {
-    FORWARD_HEAD_DELTA: number
     FORWARD_RATIO_DELTA: number
-    HEAD_TILT_DELTA: number
-    SHOULDER_UNEVEN_RATIO: number
+    HEAD_OFFSET_DELTA: number
+    SHOULDER_UNEVEN_DELTA: number
   }
   triggers: {
-    forwardHeadByNeck: boolean
-    forwardHeadByRatio: boolean
-    shoulderUneven: boolean
+    forwardHead: boolean
     headTilt: boolean
+    shoulderUneven: boolean
   }
   postureIssues: ActivePostureIssue[]
   postureScore: number
@@ -61,8 +59,7 @@ export interface PostureDebugSnapshot {
 
 function resolveActiveIssues(triggers: PostureDebugSnapshot['triggers']): string[] {
   const active: string[] = []
-  if (triggers.forwardHeadByNeck) active.push('forward_head:neck')
-  if (triggers.forwardHeadByRatio) active.push('forward_head:forwardRatio')
+  if (triggers.forwardHead) active.push('forward_head')
   if (triggers.shoulderUneven) active.push('shoulder_uneven')
   if (triggers.headTilt) active.push('head_tilt')
   return active
@@ -72,27 +69,23 @@ export function buildPostureDebugSnapshot(
   metrics: PostureMetrics,
   baseline: PostureBaseline | null
 ): PostureDebugSnapshot {
-  const neckDelta = baseline ? metrics.neckAngleDeg - baseline.neckAngleDeg : 0
   const forwardDelta = baseline ? metrics.forwardRatio - baseline.forwardRatio : 0
-  const tiltDelta = baseline ? Math.abs(metrics.shoulderTiltDeg - baseline.shoulderTiltDeg) : 0
+  const headOffsetDelta = baseline ? metrics.headOffsetRatio - baseline.headOffsetRatio : 0
+  const unevenDelta = baseline
+    ? metrics.shoulderUnevenRatio - baseline.shoulderUnevenRatio
+    : 0
 
-  const forwardHeadByNeck = baseline
-    ? metrics.neckAngleDeg > baseline.neckAngleDeg + FORWARD_HEAD_DELTA
-    : false
-  const forwardHeadByRatio = baseline
+  const forwardHead = baseline
     ? metrics.forwardRatio > baseline.forwardRatio + FORWARD_RATIO_DELTA
     : false
-  const shoulderUneven = metrics.shoulderUnevenRatio > SHOULDER_UNEVEN_RATIO
   const headTilt = baseline
-    ? Math.abs(metrics.shoulderTiltDeg - baseline.shoulderTiltDeg) > HEAD_TILT_DELTA
+    ? metrics.headOffsetRatio > baseline.headOffsetRatio + HEAD_OFFSET_DELTA
+    : false
+  const shoulderUneven = baseline
+    ? metrics.shoulderUnevenRatio > baseline.shoulderUnevenRatio + SHOULDER_UNEVEN_DELTA
     : false
 
-  const triggers = {
-    forwardHeadByNeck,
-    forwardHeadByRatio,
-    shoulderUneven,
-    headTilt
-  }
+  const triggers = { forwardHead, headTilt, shoulderUneven }
 
   const activeIssues =
     !baseline || !metrics.trackable ? [] : resolveActiveIssues(triggers)
@@ -104,19 +97,18 @@ export function buildPostureDebugSnapshot(
     neckAngleDeg: metrics.neckAngleDeg,
     shoulderTiltDeg: metrics.shoulderTiltDeg,
     forwardRatio: metrics.forwardRatio,
+    headOffsetRatio: metrics.headOffsetRatio,
     shoulderUnevenRatio: metrics.shoulderUnevenRatio,
     baseline,
     deltas: {
-      neck: neckDelta,
       forward: forwardDelta,
-      tilt: tiltDelta,
-      uneven: metrics.shoulderUnevenRatio
+      headOffset: headOffsetDelta,
+      uneven: unevenDelta
     },
     thresholds: {
-      FORWARD_HEAD_DELTA,
       FORWARD_RATIO_DELTA,
-      HEAD_TILT_DELTA,
-      SHOULDER_UNEVEN_RATIO
+      HEAD_OFFSET_DELTA,
+      SHOULDER_UNEVEN_DELTA
     },
     triggers,
     postureIssues: metrics.postureIssues,

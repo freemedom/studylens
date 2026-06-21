@@ -18,12 +18,15 @@ export interface PostureBaseline {
   neckAngleDeg: number
   shoulderTiltDeg: number
   forwardRatio: number
+  headOffsetRatio: number
+  shoulderUnevenRatio: number
 }
 
 export interface PostureMetrics {
   neckAngleDeg: number
   shoulderTiltDeg: number
   forwardRatio: number
+  headOffsetRatio: number
   shoulderWidth: number
   shoulderUnevenRatio: number
   postureIssues: ActivePostureIssue[]

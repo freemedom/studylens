@@ -1,38 +1,43 @@
+// Compared against a user-specific `PostureBaseline` from a 5 s calibration (`PostureCalibrator`) to detect slouching / tilt / uneven shoulders.
+
+// * ## Landmarks used (see `poseLandmarks.ts`)
+//  * - Pose nose (0), left shoulder (11), right shoulder (12)
+//  * - Face nose preferred over pose nose when both are available (finer head position)
+//  *
+//  * ## Metrics computed
+//  * 1. **neckAngleDeg** — angle of the nose→shoulder-mid vector from vertical (degrees).
+//  *    Larger values suggest forward head / neck flexion.
+//  * 2. **shoulderTiltDeg** — angle of the line between shoulders in the image plane.
+//  *    Deviation from baseline indicates head or torso lean.
+//  * 3. **forwardRatio** — (nose.y − shoulderMid.y) / shoulderWidth; head drop relative to shoulders.
+//  * 4. **shoulderUnevenRatio** — vertical shoulder height difference / shoulderWidth.
+//  *
+//  * ## Classification (all matching issues returned)
+//  * | Issue | Condition |
+//  * |-------|-----------|
+//  * | forward_head | neck angle or forwardRatio exceeds baseline + delta |
+//  * | shoulder_uneven | shoulderUnevenRatio > SHOULDER_UNEVEN_RATIO |
+//  * | head_tilt | shoulder tilt differs from baseline by > HEAD_TILT_DELTA |
+//  * | good | none of the above |
+//  *
+//  * Without baseline (during calibration), returns raw metrics with `postureIssues: []`.
+
+
 /**
  * Upper-body posture estimator from MediaPipe Pose + Face landmarks.
  *
- * Called every vision frame from `useVisionLoop` with pose landmarks and an optional
- * face nose (landmark index 1). Compared against a user-specific `PostureBaseline`
- * from a 5 s calibration (`PostureCalibrator`) to detect slouching / tilt / uneven shoulders.
+ * Classification uses three decoupled 2D signals vs personal baseline:
+ * - forward_head  → forwardRatio (nose below shoulder midline)
+ * - head_tilt     → headOffsetRatio (nose horizontal offset from shoulder mid)
+ * - shoulder_uneven → shoulderUnevenRatio (left/right shoulder height diff)
  *
- * ## Landmarks used (see `poseLandmarks.ts`)
- * - Pose nose (0), left shoulder (11), right shoulder (12)
- * - Face nose preferred over pose nose when both are available (finer head position)
- *
- * ## Metrics computed
- * 1. **neckAngleDeg** — angle of the nose→shoulder-mid vector from vertical (degrees).
- *    Larger values suggest forward head / neck flexion.
- * 2. **shoulderTiltDeg** — angle of the line between shoulders in the image plane.
- *    Deviation from baseline indicates head or torso lean.
- * 3. **forwardRatio** — (nose.y − shoulderMid.y) / shoulderWidth; head drop relative to shoulders.
- * 4. **shoulderUnevenRatio** — vertical shoulder height difference / shoulderWidth.
- *
- * ## Classification (all matching issues returned)
- * | Issue | Condition |
- * |-------|-----------|
- * | forward_head | neck angle or forwardRatio exceeds baseline + delta |
- * | shoulder_uneven | shoulderUnevenRatio > SHOULDER_UNEVEN_RATIO |
- * | head_tilt | shoulder tilt differs from baseline by > HEAD_TILT_DELTA |
- * | good | none of the above |
- *
- * Without baseline (during calibration), returns raw metrics with `postureIssues: []`.
+ * neckAngleDeg / shoulderTiltDeg are computed for display only.
  */
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision'
 import {
-  FORWARD_HEAD_DELTA,
   FORWARD_RATIO_DELTA,
-  HEAD_TILT_DELTA,
-  SHOULDER_UNEVEN_RATIO
+  HEAD_OFFSET_DELTA,
+  SHOULDER_UNEVEN_DELTA
 } from '../constants/thresholds'
 import {
   MIN_LANDMARK_VISIBILITY,
@@ -50,11 +55,11 @@ export const POSTURE_ISSUE_ORDER: ActivePostureIssue[] = [
   'head_tilt'
 ]
 
-/** Returned when pose is missing, shoulders too narrow, or landmarks not visible. */
 const UNKNOWN_METRICS: PostureMetrics = {
   neckAngleDeg: 0,
   shoulderTiltDeg: 0,
   forwardRatio: 0,
+  headOffsetRatio: 0,
   shoulderWidth: 0,
   shoulderUnevenRatio: 0,
   postureIssues: [],
@@ -89,18 +94,16 @@ function shoulderTiltDeg(left: NormalizedLandmark, right: NormalizedLandmark): n
 
 /** Collect every posture issue that exceeds thresholds vs personal baseline. */
 function collectPostureIssues(
-  neckAngleDeg: number,
-  shoulderTiltDeg: number,
   forwardRatio: number,
+  headOffsetRatio: number,
   shoulderUnevenRatio: number,
   baseline: PostureBaseline
 ): ActivePostureIssue[] {
   const issues: ActivePostureIssue[] = []
-  const forwardHead =
-    neckAngleDeg > baseline.neckAngleDeg + FORWARD_HEAD_DELTA ||
-    forwardRatio > baseline.forwardRatio + FORWARD_RATIO_DELTA
-  const shoulderUneven = shoulderUnevenRatio > SHOULDER_UNEVEN_RATIO
-  const headTilt = Math.abs(shoulderTiltDeg - baseline.shoulderTiltDeg) > HEAD_TILT_DELTA
+  const forwardHead = forwardRatio > baseline.forwardRatio + FORWARD_RATIO_DELTA
+  const headTilt = headOffsetRatio > baseline.headOffsetRatio + HEAD_OFFSET_DELTA
+  const shoulderUneven =
+    shoulderUnevenRatio > baseline.shoulderUnevenRatio + SHOULDER_UNEVEN_DELTA
 
   if (forwardHead) issues.push('forward_head')
   if (shoulderUneven) issues.push('shoulder_uneven')
@@ -113,18 +116,17 @@ function collectPostureIssues(
  * Used for the posture bar in MetricsPanel.
  */
 function computePostureScore(
-  neckAngleDeg: number,
-  shoulderTiltDeg: number,
   forwardRatio: number,
+  headOffsetRatio: number,
   shoulderUnevenRatio: number,
   baseline: PostureBaseline
 ): number {
-  const neckExcess = Math.max(0, neckAngleDeg - baseline.neckAngleDeg) / FORWARD_HEAD_DELTA
   const forwardExcess = Math.max(0, forwardRatio - baseline.forwardRatio) / FORWARD_RATIO_DELTA
-  const tiltExcess =
-    Math.max(0, Math.abs(shoulderTiltDeg - baseline.shoulderTiltDeg)) / HEAD_TILT_DELTA
-  const unevenExcess = Math.max(0, shoulderUnevenRatio) / SHOULDER_UNEVEN_RATIO
-  return Math.min(1, Math.max(neckExcess, forwardExcess, tiltExcess, unevenExcess))
+  const headOffsetExcess =
+    Math.max(0, headOffsetRatio - baseline.headOffsetRatio) / HEAD_OFFSET_DELTA
+  const unevenExcess =
+    Math.max(0, shoulderUnevenRatio - baseline.shoulderUnevenRatio) / SHOULDER_UNEVEN_DELTA
+  return Math.min(1, Math.max(forwardExcess, headOffsetExcess, unevenExcess))
 }
 
 /**
@@ -164,6 +166,7 @@ export function estimatePosture(
   const tiltDeg = shoulderTiltDeg(leftShoulder, rightShoulder)
   // How far the nose sits below shoulder midline, normalized by shoulder span.
   const forwardRatio = Math.max(0, nose.y - shoulderMidY) / shoulderWidth
+  const headOffsetRatio = Math.abs(nose.x - shoulderMidX) / shoulderWidth
   const shoulderUnevenRatio = Math.abs(leftShoulder.y - rightShoulder.y) / shoulderWidth
 
   // Calibration phase: collect raw angles only; no issues/score until baseline exists.
@@ -172,6 +175,7 @@ export function estimatePosture(
       neckAngleDeg,
       shoulderTiltDeg: tiltDeg,
       forwardRatio,
+      headOffsetRatio,
       shoulderWidth,
       shoulderUnevenRatio,
       postureIssues: [],
@@ -181,16 +185,14 @@ export function estimatePosture(
   }
 
   const postureIssues = collectPostureIssues(
-    neckAngleDeg,
-    tiltDeg,
     forwardRatio,
+    headOffsetRatio,
     shoulderUnevenRatio,
     baseline
   )
   const postureScore = computePostureScore(
-    neckAngleDeg,
-    tiltDeg,
     forwardRatio,
+    headOffsetRatio,
     shoulderUnevenRatio,
     baseline
   )
@@ -199,6 +201,7 @@ export function estimatePosture(
     neckAngleDeg,
     shoulderTiltDeg: tiltDeg,
     forwardRatio,
+    headOffsetRatio,
     shoulderWidth,
     shoulderUnevenRatio,
     postureIssues,

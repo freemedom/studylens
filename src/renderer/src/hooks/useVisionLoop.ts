@@ -343,6 +343,7 @@ export function useVisionLoop(
                 neckAngleDeg: postureMetrics.neckAngleDeg,
                 shoulderTiltDeg: postureMetrics.shoulderTiltDeg,
                 forwardRatio: postureMetrics.forwardRatio,
+                headOffsetRatio: postureMetrics.headOffsetRatio,
                 postureScore: postureMetrics.postureScore,
                 showPostureHint
               })
@@ -384,6 +385,7 @@ export function useVisionLoop(
                   neckAngleDeg: 0,
                   shoulderTiltDeg: 0,
                   forwardRatio: 0,
+                  headOffsetRatio: 0,
                   shoulderWidth: 0,
                   shoulderUnevenRatio: 0,
                   postureIssues: [],
@@ -417,6 +419,7 @@ export function useVisionLoop(
                 neckAngleDeg: 0,
                 shoulderTiltDeg: 0,
                 forwardRatio: 0,
+                headOffsetRatio: 0,
                 postureScore: 0,
                 showPostureHint: false,
                 calibrationSecondsLeft: calibrating
