@@ -14,7 +14,7 @@ import {
   SHOULDER_UNEVEN_RATIO
 } from '../constants/thresholds'
 import { MIN_SHOULDER_WIDTH_RATIO } from '../constants/poseLandmarks'
-import type { PostureBaseline, PostureIssue, PostureMetrics } from '../types/metrics'
+import type { ActivePostureIssue, PostureBaseline, PostureMetrics } from '../types/metrics'
 
 export const POSTURE_DEBUG_KEY = 'studylens:postureDebug'
 
@@ -26,6 +26,10 @@ export function isPostureDebugEnabled(): boolean {
   } catch {
     return false
   }
+}
+
+export function postureIssuesEqual(a: ActivePostureIssue[], b: ActivePostureIssue[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i])
 }
 
 export interface PostureDebugSnapshot {
@@ -50,17 +54,18 @@ export interface PostureDebugSnapshot {
     shoulderUneven: boolean
     headTilt: boolean
   }
-  postureIssue: PostureIssue
+  postureIssues: ActivePostureIssue[]
   postureScore: number
-  winningRule: string | null
+  activeIssues: string[]
 }
 
-function resolveWinningRule(triggers: PostureDebugSnapshot['triggers']): string | null {
-  if (triggers.forwardHeadByNeck) return 'forward_head:neck'
-  if (triggers.forwardHeadByRatio) return 'forward_head:forwardRatio'
-  if (triggers.shoulderUneven) return 'shoulder_uneven'
-  if (triggers.headTilt) return 'head_tilt'
-  return 'good'
+function resolveActiveIssues(triggers: PostureDebugSnapshot['triggers']): string[] {
+  const active: string[] = []
+  if (triggers.forwardHeadByNeck) active.push('forward_head:neck')
+  if (triggers.forwardHeadByRatio) active.push('forward_head:forwardRatio')
+  if (triggers.shoulderUneven) active.push('shoulder_uneven')
+  if (triggers.headTilt) active.push('head_tilt')
+  return active
 }
 
 export function buildPostureDebugSnapshot(
@@ -89,8 +94,8 @@ export function buildPostureDebugSnapshot(
     headTilt
   }
 
-  const winningRule =
-    !baseline || !metrics.trackable ? null : resolveWinningRule(triggers)
+  const activeIssues =
+    !baseline || !metrics.trackable ? [] : resolveActiveIssues(triggers)
 
   return {
     trackable: metrics.trackable,
@@ -114,8 +119,8 @@ export function buildPostureDebugSnapshot(
       SHOULDER_UNEVEN_RATIO
     },
     triggers,
-    postureIssue: metrics.postureIssue,
+    postureIssues: metrics.postureIssues,
     postureScore: metrics.postureScore,
-    winningRule
+    activeIssues
   }
 }

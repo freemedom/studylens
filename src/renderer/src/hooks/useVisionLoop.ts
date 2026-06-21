@@ -1,17 +1,18 @@
 import { useEffect, useRef } from 'react'
 import { FATIGUE_BREAK_SECONDS, POSTURE_ALERT_HOLD_MS } from '../constants/thresholds'
 import { useSessionStore } from '../store/sessionStore'
-import type { DistanceStatus, Mood, PostureBaseline, PostureIssue, PostureMetrics } from '../types/metrics'
+import type { ActivePostureIssue, DistanceStatus, Mood, PostureBaseline, PostureMetrics } from '../types/metrics'
 import { BlinkDetector } from '../vision/blinkDetector'
 import { drawPostureSkeleton } from '../vision/drawPostureSkeleton'
 import { estimateDistanceStatus, estimateFaceRatio } from '../vision/distanceEstimator'
 import { ExpressionEstimator } from '../vision/expressionEstimator'
 import { detectFace, initFaceLandmarker } from '../vision/faceLandmarker'
 import { PostureCalibrator } from '../vision/postureCalibrator'
-import { estimatePosture, postureAlertMessage } from '../vision/postureEstimator'
+import { estimatePosture, postureAlertMessages } from '../vision/postureEstimator'
 import {
   buildPostureDebugSnapshot,
   isPostureDebugEnabled,
+  postureIssuesEqual,
   POSTURE_DEBUG_LOG_MS
 } from '../vision/postureDebug'
 import { detectPose, initPoseLandmarker } from '../vision/poseLandmarker'
@@ -26,21 +27,28 @@ function computeFatigueLevel(blinksPerMinute: number, mood: Mood): number {
 
 function buildAlert(
   distanceStatus: DistanceStatus,
-  postureIssue: PostureIssue,
+  postureIssues: ActivePostureIssue[],
   mood: Mood,
   blinksPerMinute: number
 ): string | null {
   if (distanceStatus === 'too_near') return '请远离屏幕，保持一臂距离'
   if (distanceStatus === 'too_far') return '请靠近摄像头或调整坐姿'
-  const postureMsg = postureAlertMessage(postureIssue)
-  if (postureMsg) return postureMsg
+  const postureMsgs = postureAlertMessages(postureIssues)
+  if (postureMsgs.length > 0) return postureMsgs.join('；')
   if (mood === 'tired' || blinksPerMinute < 10) return '眨眼偏少，注意休息'
   if (mood === 'restless') return '状态烦躁，试试深呼吸'
   return null
 }
 
-function isBadPosture(issue: PostureIssue): boolean {
-  return issue !== 'good' && issue !== 'unknown'
+function isBadPosture(issues: ActivePostureIssue[]): boolean {
+  return issues.length > 0
+}
+
+function countNewPostureIssues(
+  prev: ActivePostureIssue[],
+  next: ActivePostureIssue[]
+): number {
+  return next.filter((issue) => !prev.includes(issue)).length
 }
 
 function maybeLogPostureDebug(
@@ -48,20 +56,20 @@ function maybeLogPostureDebug(
   baseline: PostureBaseline | null,
   wallNow: number,
   lastLogAt: { current: number },
-  prevIssue: { current: PostureIssue }
+  prevIssues: { current: ActivePostureIssue[] }
 ): void {
   if (!isPostureDebugEnabled()) return
 
   const snapshot = buildPostureDebugSnapshot(metrics, baseline)
-  const issue = metrics.postureIssue
+  const issues = metrics.postureIssues
 
-  if (issue !== prevIssue.current) {
-    console.warn('[StudyLens:posture] issue changed', {
-      from: prevIssue.current,
-      to: issue,
+  if (!postureIssuesEqual(issues, prevIssues.current)) {
+    console.warn('[StudyLens:posture] issues changed', {
+      from: prevIssues.current,
+      to: issues,
       snapshot
     })
-    prevIssue.current = issue
+    prevIssues.current = issues
   }
 
   if (wallNow - lastLogAt.current >= POSTURE_DEBUG_LOG_MS) {
@@ -86,10 +94,10 @@ export function useVisionLoop(
   const lastTimestamp = useRef(0)
   const prevDistance = useRef<DistanceStatus>('none')
   const prevMood = useRef<Mood>('unknown')
-  const prevPosture = useRef<PostureIssue>('unknown')
+  const prevPostureIssues = useRef<ActivePostureIssue[]>([])
   const badPostureSince = useRef<number | null>(null)
   const lastPostureLogAt = useRef(0)
-  const prevPostureDebugIssue = useRef<PostureIssue>('unknown')
+  const prevPostureDebugIssues = useRef<ActivePostureIssue[]>([])
   const loadingRef = useRef(true)
 
   const isRunning = useSessionStore((s) => s.isRunning)
@@ -104,7 +112,7 @@ export function useVisionLoop(
       expressionEstimator.current.reset()
       prevDistance.current = 'none'
       prevMood.current = 'unknown'
-      prevPosture.current = 'unknown'
+      prevPostureIssues.current = []
       badPostureSince.current = null
     }
   }, [isRunning])
@@ -113,7 +121,7 @@ export function useVisionLoop(
     const unsub = useSessionStore.subscribe((state, prev) => {
       if (state.calibrationPhase === 'running' && prev.calibrationPhase !== 'running') {
         postureCalibrator.current.start(Date.now())
-        prevPosture.current = 'unknown'
+        prevPostureIssues.current = []
         badPostureSince.current = null
       }
       if (state.calibrationPhase === 'idle' && prev.calibrationPhase === 'running') {
@@ -194,7 +202,7 @@ export function useVisionLoop(
                 calibrating ? null : baseline,
                 wallNow,
                 lastPostureLogAt,
-                prevPostureDebugIssue
+                prevPostureDebugIssues
               )
 
               if (calibrating) {
@@ -229,7 +237,7 @@ export function useVisionLoop(
                         nose,
                         canvas.width,
                         canvas.height,
-                        postureMetrics.postureIssue
+                        postureMetrics.postureIssues
                       )
                     }
                   }
@@ -250,13 +258,14 @@ export function useVisionLoop(
               )
               const fatigueLevel = computeFatigueLevel(blink.blinksPerMinute, mood)
 
-              const postureIssue = isRunning ? postureMetrics.postureIssue : 'unknown'
+              const postureIssues = isRunning ? postureMetrics.postureIssues : []
+              const postureTrackable = isRunning && postureMetrics.trackable
               const alertMessage = isRunning
-                ? buildAlert(distanceStatus, postureIssue, mood, blink.blinksPerMinute)
+                ? buildAlert(distanceStatus, postureIssues, mood, blink.blinksPerMinute)
                 : null
 
               let showPostureHint = false
-              if (isRunning && isBadPosture(postureIssue)) {
+              if (isRunning && isBadPosture(postureIssues)) {
                 if (!badPostureSince.current) badPostureSince.current = wallNow
                 if (wallNow - badPostureSince.current >= POSTURE_ALERT_HOLD_MS) {
                   showPostureHint = true
@@ -284,12 +293,18 @@ export function useVisionLoop(
               }
               prevMood.current = mood
 
-              if (isRunning && isBadPosture(postureIssue) && prevPosture.current !== postureIssue) {
-                useSessionStore.setState((s) => ({
-                  postureAlerts: s.postureAlerts + 1
-                }))
+              if (isRunning && isBadPosture(postureIssues)) {
+                const newIssueCount = countNewPostureIssues(
+                  prevPostureIssues.current,
+                  postureIssues
+                )
+                if (newIssueCount > 0) {
+                  useSessionStore.setState((s) => ({
+                    postureAlerts: s.postureAlerts + newIssueCount
+                  }))
+                }
               }
-              prevPosture.current = postureIssue
+              prevPostureIssues.current = postureIssues
 
               let showBreak = false
               let breakSecondsLeft = 0
@@ -323,7 +338,8 @@ export function useVisionLoop(
                 alertMessage,
                 showBreak,
                 breakSecondsLeft,
-                postureIssue,
+                postureIssues,
+                postureTrackable,
                 neckAngleDeg: postureMetrics.neckAngleDeg,
                 shoulderTiltDeg: postureMetrics.shoulderTiltDeg,
                 forwardRatio: postureMetrics.forwardRatio,
@@ -354,7 +370,7 @@ export function useVisionLoop(
                       nose,
                       canvas.width,
                       canvas.height,
-                      postureIssue
+                      postureIssues
                     )
                   }
                 }
@@ -370,7 +386,7 @@ export function useVisionLoop(
                   forwardRatio: 0,
                   shoulderWidth: 0,
                   shoulderUnevenRatio: 0,
-                  postureIssue: 'unknown',
+                  postureIssues: [],
                   postureScore: 0,
                   trackable: false
                 })
@@ -396,7 +412,8 @@ export function useVisionLoop(
                 alertMessage: calibrating ? null : '未检测到人脸',
                 showBreak: false,
                 breakSecondsLeft: 0,
-                postureIssue: 'unknown',
+                postureIssues: [],
+                postureTrackable: false,
                 neckAngleDeg: 0,
                 shoulderTiltDeg: 0,
                 forwardRatio: 0,

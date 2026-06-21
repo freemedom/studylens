@@ -4,7 +4,7 @@ import {
   POSE_NOSE,
   POSE_RIGHT_SHOULDER
 } from '../constants/poseLandmarks'
-import type { PostureIssue } from '../types/metrics'
+import type { ActivePostureIssue } from '../types/metrics'
 
 export function drawPostureSkeleton(
   ctx: CanvasRenderingContext2D,
@@ -12,7 +12,7 @@ export function drawPostureSkeleton(
   faceNose: { x: number; y: number } | undefined,
   width: number,
   height: number,
-  postureIssue: PostureIssue
+  postureIssues: ActivePostureIssue[]
 ): void {
   const left = poseLandmarks[POSE_LEFT_SHOULDER]
   const right = poseLandmarks[POSE_RIGHT_SHOULDER]
@@ -29,7 +29,7 @@ export function drawPostureSkeleton(
   const noseX = nose.x * width
   const noseY = nose.y * height
 
-  const bad = postureIssue !== 'good' && postureIssue !== 'unknown'
+  const bad = postureIssues.length > 0
   const shoulderColor = bad ? '#f87171' : '#fbbf24'
   const neckColor = bad ? '#f87171' : '#22d3ee'
 

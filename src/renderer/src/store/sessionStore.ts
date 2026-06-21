@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import { SESSIONS_STORAGE_KEY } from '../constants/thresholds'
 import type {
+  ActivePostureIssue,
   CalibrationPhase,
   DistanceStatus,
   Mood,
   PostureBaseline,
-  PostureIssue,
   SessionSummary
 } from '../types/metrics'
 
@@ -28,7 +28,8 @@ interface SessionState {
   calibrationSecondsLeft: number
   calibrationMessage: string | null
   postureBaseline: PostureBaseline | null
-  postureIssue: PostureIssue
+  postureIssues: ActivePostureIssue[]
+  postureTrackable: boolean
   neckAngleDeg: number
   shoulderTiltDeg: number
   forwardRatio: number
@@ -57,7 +58,8 @@ interface SessionState {
     alertMessage: string | null
     showBreak: boolean
     breakSecondsLeft: number
-    postureIssue: PostureIssue
+    postureIssues: ActivePostureIssue[]
+    postureTrackable: boolean
     neckAngleDeg: number
     shoulderTiltDeg: number
     forwardRatio: number
@@ -102,7 +104,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   calibrationSecondsLeft: 0,
   calibrationMessage: null,
   postureBaseline: null,
-  postureIssue: 'unknown',
+  postureIssues: [],
+  postureTrackable: false,
   neckAngleDeg: 0,
   shoulderTiltDeg: 0,
   forwardRatio: 0,

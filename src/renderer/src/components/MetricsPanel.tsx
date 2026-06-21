@@ -1,5 +1,5 @@
 import { useSessionStore } from '../store/sessionStore'
-import type { DistanceStatus, Mood, PostureIssue } from '../types/metrics'
+import type { ActivePostureIssue, DistanceStatus, Mood } from '../types/metrics'
 
 const MOOD_LABELS: Record<Mood, string> = {
   focused: '专注',
@@ -22,20 +22,16 @@ const DISTANCE_LABELS: Record<DistanceStatus, string> = {
   none: '—'
 }
 
-const POSTURE_LABELS: Record<PostureIssue, string> = {
-  good: '坐姿良好',
+const POSTURE_LABELS: Record<ActivePostureIssue, string> = {
   forward_head: '颈椎前倾',
   head_tilt: '头部歪斜',
-  shoulder_uneven: '高低肩',
-  unknown: '未检测'
+  shoulder_uneven: '高低肩'
 }
 
-const POSTURE_CLASS: Record<PostureIssue, string> = {
-  good: 'posture-good',
+const POSTURE_CLASS: Record<ActivePostureIssue, string> = {
   forward_head: 'posture-bad',
   head_tilt: 'posture-bad',
-  shoulder_uneven: 'posture-bad',
-  unknown: 'posture-unknown'
+  shoulder_uneven: 'posture-bad'
 }
 
 export default function MetricsPanel(): React.JSX.Element {
@@ -50,7 +46,8 @@ export default function MetricsPanel(): React.JSX.Element {
   const distanceAlerts = useSessionStore((s) => s.distanceAlerts)
   const tiredSamples = useSessionStore((s) => s.tiredSamples)
   const postureAlerts = useSessionStore((s) => s.postureAlerts)
-  const postureIssue = useSessionStore((s) => s.postureIssue)
+  const postureIssues = useSessionStore((s) => s.postureIssues)
+  const postureTrackable = useSessionStore((s) => s.postureTrackable)
   const neckAngleDeg = useSessionStore((s) => s.neckAngleDeg)
   const shoulderTiltDeg = useSessionStore((s) => s.shoulderTiltDeg)
   const postureScore = useSessionStore((s) => s.postureScore)
@@ -90,8 +87,18 @@ export default function MetricsPanel(): React.JSX.Element {
       </div>
       <div className="metric-card">
         <div className="metric-label">坐姿状态</div>
-        <div className={`metric-badge ${POSTURE_CLASS[postureIssue]}`}>
-          {POSTURE_LABELS[postureIssue]}
+        <div className="posture-badges">
+          {!isRunning || !postureTrackable ? (
+            <div className="metric-badge posture-unknown">未检测</div>
+          ) : postureIssues.length === 0 ? (
+            <div className="metric-badge posture-good">坐姿良好</div>
+          ) : (
+            postureIssues.map((issue) => (
+              <div key={issue} className={`metric-badge ${POSTURE_CLASS[issue]}`}>
+                {POSTURE_LABELS[issue]}
+              </div>
+            ))
+          )}
         </div>
       </div>
       <div className="metric-card">

@@ -17,7 +17,7 @@
  * 3. **forwardRatio** — (nose.y − shoulderMid.y) / shoulderWidth; head drop relative to shoulders.
  * 4. **shoulderUnevenRatio** — vertical shoulder height difference / shoulderWidth.
  *
- * ## Classification (first match wins, vs personal baseline)
+ * ## Classification (all matching issues returned)
  * | Issue | Condition |
  * |-------|-----------|
  * | forward_head | neck angle or forwardRatio exceeds baseline + delta |
@@ -25,7 +25,7 @@
  * | head_tilt | shoulder tilt differs from baseline by > HEAD_TILT_DELTA |
  * | good | none of the above |
  *
- * Without baseline (during calibration), returns raw metrics with `postureIssue: 'unknown'`.
+ * Without baseline (during calibration), returns raw metrics with `postureIssues: []`.
  */
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision'
 import {
@@ -41,7 +41,14 @@ import {
   POSE_NOSE,
   POSE_RIGHT_SHOULDER
 } from '../constants/poseLandmarks'
-import type { PostureBaseline, PostureIssue, PostureMetrics } from '../types/metrics'
+import type { ActivePostureIssue, PostureBaseline, PostureMetrics } from '../types/metrics'
+
+/** Stable display order when multiple posture issues are active. */
+export const POSTURE_ISSUE_ORDER: ActivePostureIssue[] = [
+  'forward_head',
+  'shoulder_uneven',
+  'head_tilt'
+]
 
 /** Returned when pose is missing, shoulders too narrow, or landmarks not visible. */
 const UNKNOWN_METRICS: PostureMetrics = {
@@ -50,7 +57,7 @@ const UNKNOWN_METRICS: PostureMetrics = {
   forwardRatio: 0,
   shoulderWidth: 0,
   shoulderUnevenRatio: 0,
-  postureIssue: 'unknown',
+  postureIssues: [],
   postureScore: 0,
   trackable: false
 }
@@ -80,26 +87,25 @@ function shoulderTiltDeg(left: NormalizedLandmark, right: NormalizedLandmark): n
   return (Math.atan2(right.y - left.y, right.x - left.x) * 180) / Math.PI
 }
 
-/**
- * Pick the worst posture issue vs personal baseline. Priority: forward head > uneven shoulders > head tilt.
- */
-function classifyIssue(
+/** Collect every posture issue that exceeds thresholds vs personal baseline. */
+function collectPostureIssues(
   neckAngleDeg: number,
   shoulderTiltDeg: number,
   forwardRatio: number,
   shoulderUnevenRatio: number,
   baseline: PostureBaseline
-): PostureIssue {
+): ActivePostureIssue[] {
+  const issues: ActivePostureIssue[] = []
   const forwardHead =
     neckAngleDeg > baseline.neckAngleDeg + FORWARD_HEAD_DELTA ||
     forwardRatio > baseline.forwardRatio + FORWARD_RATIO_DELTA
-  const headTilt = Math.abs(shoulderTiltDeg - baseline.shoulderTiltDeg) > HEAD_TILT_DELTA
   const shoulderUneven = shoulderUnevenRatio > SHOULDER_UNEVEN_RATIO
+  const headTilt = Math.abs(shoulderTiltDeg - baseline.shoulderTiltDeg) > HEAD_TILT_DELTA
 
-  if (forwardHead) return 'forward_head'
-  if (shoulderUneven) return 'shoulder_uneven'
-  if (headTilt) return 'head_tilt'
-  return 'good'
+  if (forwardHead) issues.push('forward_head')
+  if (shoulderUneven) issues.push('shoulder_uneven')
+  if (headTilt) issues.push('head_tilt')
+  return issues
 }
 
 /**
@@ -160,7 +166,7 @@ export function estimatePosture(
   const forwardRatio = Math.max(0, nose.y - shoulderMidY) / shoulderWidth
   const shoulderUnevenRatio = Math.abs(leftShoulder.y - rightShoulder.y) / shoulderWidth
 
-  // Calibration phase: collect raw angles only; no issue/score until baseline exists.
+  // Calibration phase: collect raw angles only; no issues/score until baseline exists.
   if (!baseline) {
     return {
       neckAngleDeg,
@@ -168,13 +174,13 @@ export function estimatePosture(
       forwardRatio,
       shoulderWidth,
       shoulderUnevenRatio,
-      postureIssue: 'unknown',
+      postureIssues: [],
       postureScore: 0,
       trackable: true
     }
   }
 
-  const postureIssue = classifyIssue(
+  const postureIssues = collectPostureIssues(
     neckAngleDeg,
     tiltDeg,
     forwardRatio,
@@ -195,14 +201,14 @@ export function estimatePosture(
     forwardRatio,
     shoulderWidth,
     shoulderUnevenRatio,
-    postureIssue,
+    postureIssues,
     postureScore,
     trackable: true
   }
 }
 
-/** User-facing alert copy for `buildAlert` in useVisionLoop (Chinese UI strings). */
-export function postureAlertMessage(issue: PostureIssue): string | null {
+/** User-facing alert copy for one active posture issue (Chinese UI strings). */
+export function postureAlertMessage(issue: ActivePostureIssue): string {
   switch (issue) {
     case 'forward_head':
       return '请收回下巴，挺直颈椎'
@@ -210,7 +216,9 @@ export function postureAlertMessage(issue: PostureIssue): string | null {
       return '头部保持正直，不要歪头'
     case 'shoulder_uneven':
       return '放松肩膀，保持双肩水平'
-    default:
-      return null
   }
+}
+
+export function postureAlertMessages(issues: ActivePostureIssue[]): string[] {
+  return issues.map(postureAlertMessage)
 }

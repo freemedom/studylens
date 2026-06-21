@@ -9,6 +9,9 @@ export type PostureIssue =
   | 'shoulder_uneven'
   | 'unknown'
 
+/** Actionable posture problems (excludes good / unknown). */
+export type ActivePostureIssue = Exclude<PostureIssue, 'good' | 'unknown'>
+
 export type CalibrationPhase = 'idle' | 'running' | 'done'
 
 export interface PostureBaseline {
@@ -23,7 +26,7 @@ export interface PostureMetrics {
   forwardRatio: number
   shoulderWidth: number
   shoulderUnevenRatio: number
-  postureIssue: PostureIssue
+  postureIssues: ActivePostureIssue[]
   postureScore: number
   trackable: boolean
 }

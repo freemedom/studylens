@@ -545,6 +545,12 @@ body {
   color: #4ade80;
 }
 
+.posture-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .posture-bad {
   background: rgba(248, 113, 113, 0.2);
   color: #f87171;
@@ -585,6 +591,10 @@ body {
 .posture-hint-text {
   font-size: 0.85rem;
   color: #e7ecf3;
+}
+
+.posture-hint-multi .posture-hint-text + .posture-hint-text {
+  margin-top: 6px;
 }
 
 .posture-hint-forward_head {
