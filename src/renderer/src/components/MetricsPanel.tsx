@@ -115,7 +115,7 @@ export default function MetricsPanel(): React.JSX.Element {
           </div>
         )}
         <div className="metric-hint">
-          前倾比 {forwardRatio.toFixed(3)} / 歪头偏移 {headOffsetRatio.toFixed(3)}
+          垂直偏移 {forwardRatio.toFixed(3)} / 歪头偏移 {headOffsetRatio.toFixed(3)}
           {postureBaseline && (
             <>
               {' '}

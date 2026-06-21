@@ -27,7 +27,7 @@
  * Upper-body posture estimator from MediaPipe Pose + Face landmarks.
  *
  * Classification uses three decoupled 2D signals vs personal baseline:
- * - forward_head  → forwardRatio (nose below shoulder midline)
+ * - forward_head  → forwardRatio (signed vertical nose offset vs shoulders; increases when leaning forward)
  * - head_tilt     → headOffsetRatio (nose horizontal offset from shoulder mid)
  * - shoulder_uneven → shoulderUnevenRatio (left/right shoulder height diff)
  *
@@ -164,8 +164,10 @@ export function estimatePosture(
   const neckDy = nose.y - shoulderMidY
   const neckAngleDeg = angleDegFromVertical(neckDx, neckDy)
   const tiltDeg = shoulderTiltDeg(leftShoulder, rightShoulder)
+
   // How far the nose sits below shoulder midline, normalized by shoulder span.
-  const forwardRatio = Math.max(0, nose.y - shoulderMidY) / shoulderWidth
+  // Signed vertical offset: positive = nose below shoulder midline (forward lean), negative = above (normal).
+  const forwardRatio = (nose.y - shoulderMidY) / shoulderWidth
   const headOffsetRatio = Math.abs(nose.x - shoulderMidX) / shoulderWidth
   const shoulderUnevenRatio = Math.abs(leftShoulder.y - rightShoulder.y) / shoulderWidth
 

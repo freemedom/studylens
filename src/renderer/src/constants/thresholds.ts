@@ -22,7 +22,7 @@ export const SHOULDER_UNEVEN_RATIO = 0.08
 /** Fallback when calibration collects too few valid frames. */
 export const DEFAULT_NECK_ANGLE_DEG = 15
 export const DEFAULT_SHOULDER_TILT_DEG = 0
-export const DEFAULT_FORWARD_RATIO = 0.35
+export const DEFAULT_FORWARD_RATIO = -0.25
 export const DEFAULT_HEAD_OFFSET_RATIO = 0.05
 export const DEFAULT_SHOULDER_UNEVEN_RATIO = 0.03
 
