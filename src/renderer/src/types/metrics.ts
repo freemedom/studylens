@@ -12,7 +12,7 @@ export type PostureIssue =
 /** Actionable posture problems (excludes good / unknown). */
 export type ActivePostureIssue = Exclude<PostureIssue, 'good' | 'unknown'>
 
-export type CalibrationPhase = 'idle' | 'running' | 'done'
+export type CalibrationPhase = 'idle' | 'preparing' | 'running' | 'done'
 
 export interface PostureBaseline {
   neckAngleDeg: number

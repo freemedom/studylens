@@ -7,11 +7,11 @@ export default function SessionControls(): React.JSX.Element {
   const startCalibration = useSessionStore((s) => s.startCalibration)
   const stopSession = useSessionStore((s) => s.stopSession)
 
-  const calibrating = calibrationPhase === 'running'
+  const inCalibrationFlow = calibrationPhase === 'preparing' || calibrationPhase === 'running'
 
   return (
     <div className="session-controls">
-      {!isRunning && !calibrating ? (
+      {!isRunning && !inCalibrationFlow ? (
         <button type="button" className="btn-primary" disabled={!isReady} onClick={startCalibration}>
           开始学习会话
         </button>
@@ -19,7 +19,7 @@ export default function SessionControls(): React.JSX.Element {
         <button
           type="button"
           className="btn-secondary"
-          disabled={calibrating}
+          disabled={calibrationPhase === 'running'}
           onClick={stopSession}
         >
           结束会话

@@ -124,7 +124,7 @@ export function useVisionLoop(
         prevPostureIssues.current = []
         badPostureSince.current = null
       }
-      if (state.calibrationPhase === 'idle' && prev.calibrationPhase === 'running') {
+      if (state.calibrationPhase === 'idle' && prev.calibrationPhase !== 'idle') {
         postureCalibrator.current.reset()
       }
     })

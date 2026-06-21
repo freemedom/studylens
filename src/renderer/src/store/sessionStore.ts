@@ -45,6 +45,7 @@ interface SessionState {
   setError: (error: string | null) => void
   toggleMesh: () => void
   startCalibration: () => void
+  beginCalibrationRecording: () => void
   finishCalibration: (baseline: PostureBaseline, usedFallback: boolean) => void
   cancelCalibration: () => void
   stopSession: () => void
@@ -126,8 +127,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   startCalibration: () =>
     set({
-      calibrationPhase: 'running',
-      calibrationSecondsLeft: 5,
+      calibrationPhase: 'preparing',
+      calibrationSecondsLeft: 0,
       calibrationMessage: null,
       isRunning: false,
       postureBaseline: null,
@@ -139,6 +140,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       alertMessage: null,
       showBreak: false,
       showPostureHint: false
+    }),
+
+  beginCalibrationRecording: () =>
+    set({
+      calibrationPhase: 'running',
+      calibrationSecondsLeft: 5
     }),
 
   finishCalibration: (baseline, usedFallback) =>
