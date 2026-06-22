@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { LOCATION_RADIUS_HINT, LOCATION_RADIUS_LABEL } from '../context/contextCopy'
+import { useEffect, useState } from 'react'
+import { LOCATION_RADIUS_LABEL, STRICT_RULE_DELETE_NOTICE } from '../context/contextCopy'
 import { getModeLabel, STUDY_MODES } from '../context/modeProfiles'
 import { buildOpenStreetMapUrl } from '../context/openStreetMapUrl'
+import { isStrictRuleDeleteLocked } from '../context/ruleDeleteLock'
 import { DEFAULT_LOCATION_RADIUS_M } from '../constants/thresholds'
 import { useContextStore } from '../store/contextStore'
 import type { ContextRule, StudyMode } from '../types/context'
@@ -47,7 +48,26 @@ export default function ContextModePanel(): React.JSX.Element {
   const [locationMode, setLocationMode] = useState<StudyMode>('study')
   const [radiusM, setRadiusM] = useState(DEFAULT_LOCATION_RADIUS_M)
   const [manualSelection, setManualSelection] = useState<StudyMode>('study')
+  const [now, setNow] = useState(() => Date.now())
+  const [strictCreateNotice, setStrictCreateNotice] = useState(false)
   const matchedRule = rules.find((rule) => rule.id === matchedRuleId) ?? null
+
+  useEffect(() => {
+    const hasLocked = rules.some((rule) => isStrictRuleDeleteLocked(rule, now))
+    if (!hasLocked) return
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [rules, now])
+
+  useEffect(() => {
+    if (!strictCreateNotice) return
+    const timer = window.setTimeout(() => setStrictCreateNotice(false), 5000)
+    return () => window.clearTimeout(timer)
+  }, [strictCreateNotice])
+
+  function notifyIfStrictRule(mode: StudyMode): void {
+    if (mode === 'strict') setStrictCreateNotice(true)
+  }
 
   const sourceText =
     contextSource === 'wifi' && matchedRule?.kind === 'wifi'
@@ -112,7 +132,11 @@ export default function ContextModePanel(): React.JSX.Element {
             type="button"
             className="btn-ghost"
             disabled={!currentWifi}
-            onClick={() => currentWifi && addWifiRule(currentWifi, wifiMode)}
+            onClick={() => {
+              if (!currentWifi) return
+              addWifiRule(currentWifi, wifiMode)
+              notifyIfStrictRule(wifiMode)
+            }}
           >
             添加规则
           </button>
@@ -121,7 +145,6 @@ export default function ContextModePanel(): React.JSX.Element {
 
       <div className="context-action-card">
         <div className="context-action-title">绑定当前位置</div>
-        <p className="metric-hint">{LOCATION_RADIUS_HINT}</p>
         <div className="context-action-row">
           <span className="context-field-label">{LOCATION_RADIUS_LABEL}</span>
           <input
@@ -149,15 +172,16 @@ export default function ContextModePanel(): React.JSX.Element {
             type="button"
             className="btn-ghost"
             disabled={!currentLocation}
-            onClick={() =>
-              currentLocation &&
+            onClick={() => {
+              if (!currentLocation) return
               addLocationRule(
                 currentLocation.lat,
                 currentLocation.lng,
                 radiusM,
                 locationMode
               )
-            }
+              notifyIfStrictRule(locationMode)
+            }}
           >
             添加规则
           </button>
@@ -167,11 +191,19 @@ export default function ContextModePanel(): React.JSX.Element {
       {rules.length > 0 && (
         <div className="context-rules">
           <h3>已保存规则</h3>
+          {strictCreateNotice && (
+            <p className="metric-hint">{STRICT_RULE_DELETE_NOTICE}</p>
+          )}
           <ul>
             {rules.map((rule) => (
               <li key={rule.id}>
                 <span>{ruleSummary(rule)}</span>
-                <button type="button" className="btn-ghost" onClick={() => removeRule(rule.id)}>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={isStrictRuleDeleteLocked(rule, now)}
+                  onClick={() => removeRule(rule.id)}
+                >
                   删除
                 </button>
               </li>

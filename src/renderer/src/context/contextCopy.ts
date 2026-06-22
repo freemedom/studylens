@@ -1,2 +1,2 @@
-export const LOCATION_RADIUS_HINT = '有效半径：在此距离内视为到达该地点'
 export const LOCATION_RADIUS_LABEL = '有效半径'
+export const STRICT_RULE_DELETE_NOTICE = '严格模式规则已添加，20 秒后可删除'

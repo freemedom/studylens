@@ -30,3 +30,4 @@ export const CONTEXT_POLL_MS = 30_000
 export const CONTEXT_RULES_STORAGE_KEY = 'studylens_context_rules'
 export const MANUAL_MODE_STORAGE_KEY = 'studylens_manual_mode'
 export const DEFAULT_LOCATION_RADIUS_M = 300
+export const STRICT_RULE_DELETE_LOCK_MS = 20_000

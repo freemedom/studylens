@@ -14,6 +14,7 @@ export type WifiContextRule = {
   ssid: string
   mode: StudyMode
   label?: string
+  createdAt?: number
 }
 
 export type LocationContextRule = {
@@ -24,6 +25,7 @@ export type LocationContextRule = {
   radiusM: number
   mode: StudyMode
   label?: string
+  createdAt?: number
 }
 
 export type ContextRule = WifiContextRule | LocationContextRule

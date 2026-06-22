@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { matchContextRule } from '../context/matchRule'
+import { isStrictRuleDeleteLocked } from '../context/ruleDeleteLock'
 import {
   CONTEXT_RULES_STORAGE_KEY,
   MANUAL_MODE_STORAGE_KEY
@@ -114,7 +115,8 @@ export const useContextStore = create<ContextState>((set) => ({
       kind: 'wifi',
       ssid: trimmed,
       mode,
-      label
+      label,
+      createdAt: Date.now()
     }
     set((state) => {
       const rules = [...state.rules.filter((r) => !(r.kind === 'wifi' && r.ssid === trimmed)), rule]
@@ -132,7 +134,8 @@ export const useContextStore = create<ContextState>((set) => ({
       lng,
       radiusM,
       mode,
-      label
+      label,
+      createdAt: Date.now()
     }
     set((state) => {
       const rules = [...state.rules, rule]
@@ -144,6 +147,8 @@ export const useContextStore = create<ContextState>((set) => ({
 
   removeRule: (id) => {
     set((state) => {
+      const rule = state.rules.find((r) => r.id === id)
+      if (rule && isStrictRuleDeleteLocked(rule)) return state
       const rules = state.rules.filter((rule) => rule.id !== id)
       saveRules(rules)
       const next = { ...state, rules }
