@@ -34,13 +34,11 @@ function haversineMeters(a: GeoPoint, b: GeoPoint): number {
   return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
 }
 
-function matchWifiRule(rules: ContextRule[], ssid: string | null): ContextRule | null {
-  if (!ssid) return null
+function matchWifiRules(rules: ContextRule[], ssid: string | null): ContextRule[] {
+  if (!ssid) return []
   const normalized = ssid.trim().toLowerCase()
-  return (
-    rules.find(
-      (rule) => rule.kind === 'wifi' && rule.ssid.trim().toLowerCase() === normalized
-    ) ?? null
+  return rules.filter(
+    (rule) => rule.kind === 'wifi' && rule.ssid.trim().toLowerCase() === normalized
   )
 }
 
@@ -61,8 +59,7 @@ function collectMatchingRules(
   location: GeoPoint | null
 ): ContextRule[] {
   const matched: ContextRule[] = []
-  const wifi = matchWifiRule(rules, ssid)
-  if (wifi) matched.push(wifi)
+  matched.push(...matchWifiRules(rules, ssid))
   matched.push(...matchLocationRules(rules, location))
   return matched
 }

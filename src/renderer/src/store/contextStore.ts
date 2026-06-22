@@ -119,7 +119,7 @@ export const useContextStore = create<ContextState>((set) => ({
       createdAt: Date.now()
     }
     set((state) => {
-      const rules = [...state.rules.filter((r) => !(r.kind === 'wifi' && r.ssid === trimmed)), rule]
+      const rules = [...state.rules, rule]
       saveRules(rules)
       const next = { ...state, rules }
       return { ...next, ...recomputeMatch(next) }
