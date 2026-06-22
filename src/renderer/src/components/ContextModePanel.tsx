@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LOCATION_RADIUS_HINT, LOCATION_RADIUS_LABEL } from '../context/contextCopy'
 import { getModeLabel, STUDY_MODES } from '../context/modeProfiles'
 import { buildOpenStreetMapUrl } from '../context/openStreetMapUrl'
 import { DEFAULT_LOCATION_RADIUS_M } from '../constants/thresholds'
@@ -120,7 +121,9 @@ export default function ContextModePanel(): React.JSX.Element {
 
       <div className="context-action-card">
         <div className="context-action-title">绑定当前位置</div>
+        <p className="metric-hint">{LOCATION_RADIUS_HINT}</p>
         <div className="context-action-row">
+          <span className="context-field-label">{LOCATION_RADIUS_LABEL}</span>
           <input
             className="context-input"
             type="number"

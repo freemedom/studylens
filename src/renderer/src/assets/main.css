@@ -175,6 +175,11 @@ body {
   margin-bottom: 8px;
 }
 
+.context-field-label {
+  font-size: 0.8rem;
+  color: #8b9cb3;
+}
+
 .context-action-row {
   display: flex;
   align-items: center;
