@@ -104,6 +104,18 @@ export default function MetricsPanel(): React.JSX.Element {
         </div>
       </div>
       <div className="metric-card">
+        <div className="metric-label">垂直偏移 / 歪头偏移</div>
+        <div className="metric-value small">
+          {forwardRatio.toFixed(3)} / {headOffsetRatio.toFixed(3)}
+        </div>
+        {postureBaseline && (
+          <div className="metric-hint">
+            基准 {postureBaseline.forwardRatio.toFixed(3)} /{' '}
+            {postureBaseline.headOffsetRatio.toFixed(3)}
+          </div>
+        )}
+      </div>
+      <div className="metric-card">
         <div className="metric-label">颈角 / 肩倾</div>
         <div className="metric-value small">
           {neckAngleDeg.toFixed(1)}° / {shoulderTiltDeg.toFixed(1)}°
@@ -114,16 +126,6 @@ export default function MetricsPanel(): React.JSX.Element {
             {postureBaseline.shoulderTiltDeg.toFixed(1)}°
           </div>
         )}
-        <div className="metric-hint">
-          垂直偏移 {forwardRatio.toFixed(3)} / 歪头偏移 {headOffsetRatio.toFixed(3)}
-          {postureBaseline && (
-            <>
-              {' '}
-              (基准 {postureBaseline.forwardRatio.toFixed(3)} /{' '}
-              {postureBaseline.headOffsetRatio.toFixed(3)})
-            </>
-          )}
-        </div>
       </div>
       <div className="metric-card">
         <div className="metric-label">姿势偏差</div>
