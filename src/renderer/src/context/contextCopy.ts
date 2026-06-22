@@ -1,2 +1,17 @@
 export const LOCATION_RADIUS_LABEL = '有效半径'
 export const STRICT_RULE_DELETE_NOTICE = '严格模式规则已添加，20 秒后可删除'
+
+export const SYNC_SECTION_TITLE = '云端同步'
+export const SYNC_UNCONFIGURED_HINT =
+  '未配置 Supabase。复制 .env.example 为 .env 并填写 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY（手机端为 EXPO_PUBLIC_*），然后在 Supabase SQL Editor 执行 supabase/context_sync.sql。'
+export const SYNC_TOKEN_LABEL = '同步码'
+export const SYNC_CREATE_BTN = '创建同步码'
+export const SYNC_JOIN_BTN = '加入同步'
+export const SYNC_NOW_BTN = '立即同步'
+export const SYNC_DISCONNECT_BTN = '断开'
+export const SYNC_TOKEN_COPIED = '同步码已复制到剪贴板'
+export const SYNC_JOIN_PLACEHOLDER = '粘贴同步码'
+export const SYNC_PAIRED_HINT = '已配对'
+export const SYNC_LAST_SYNCED = '上次同步'
+export const SYNC_NEVER = '尚未同步'
+export const SYNC_CONFLICT_NOTICE = '同步冲突，已采用较新版本'

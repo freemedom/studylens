@@ -1,11 +1,32 @@
 import { useEffect, useState } from 'react'
-import { LOCATION_RADIUS_LABEL, STRICT_RULE_DELETE_NOTICE } from '../context/contextCopy'
+import {
+  LOCATION_RADIUS_LABEL,
+  STRICT_RULE_DELETE_NOTICE,
+  SYNC_CONFLICT_NOTICE,
+  SYNC_CREATE_BTN,
+  SYNC_DISCONNECT_BTN,
+  SYNC_JOIN_BTN,
+  SYNC_JOIN_PLACEHOLDER,
+  SYNC_LAST_SYNCED,
+  SYNC_NEVER,
+  SYNC_NOW_BTN,
+  SYNC_PAIRED_HINT,
+  SYNC_SECTION_TITLE,
+  SYNC_TOKEN_COPIED,
+  SYNC_UNCONFIGURED_HINT
+} from '../context/contextCopy'
 import { getModeLabel, STUDY_MODES } from '../context/modeProfiles'
 import { buildOpenStreetMapUrl } from '../context/openStreetMapUrl'
 import { isStrictRuleDeleteLocked } from '../context/ruleDeleteLock'
 import { DEFAULT_LOCATION_RADIUS_M } from '../constants/thresholds'
+import { maskSyncToken } from '../services/contextSync'
 import { useContextStore } from '../store/contextStore'
 import type { ContextRule, StudyMode } from '../types/context'
+
+function formatSyncTime(ts: number | null): string {
+  if (!ts) return SYNC_NEVER
+  return new Date(ts).toLocaleString()
+}
 
 function ruleSummary(rule: ContextRule): string {
   if (rule.kind === 'wifi') {
@@ -27,6 +48,17 @@ export default function ContextModePanel(): React.JSX.Element {
   const addLocationRule = useContextStore((s) => s.addLocationRule)
   const removeRule = useContextStore((s) => s.removeRule)
   const setManualMode = useContextStore((s) => s.setManualMode)
+  const syncToken = useContextStore((s) => s.syncToken)
+  const syncStatus = useContextStore((s) => s.syncStatus)
+  const syncError = useContextStore((s) => s.syncError)
+  const lastSyncedAt = useContextStore((s) => s.lastSyncedAt)
+  const createSync = useContextStore((s) => s.createSync)
+  const joinSync = useContextStore((s) => s.joinSync)
+  const disconnectSync = useContextStore((s) => s.disconnectSync)
+  const syncNow = useContextStore((s) => s.syncNow)
+
+  const [joinTokenInput, setJoinTokenInput] = useState('')
+  const [syncNotice, setSyncNotice] = useState<string | null>(null)
 
   // Local form state for "add rule" / manual-lock controls (not the global `activeMode`).
   // Defaults pre-select sensible modes before the user clicks "添加规则" or "锁定".
@@ -64,6 +96,19 @@ export default function ContextModePanel(): React.JSX.Element {
     const timer = window.setTimeout(() => setStrictCreateNotice(false), 5000)
     return () => window.clearTimeout(timer)
   }, [strictCreateNotice])
+
+  useEffect(() => {
+    if (syncStatus !== 'conflict' && !syncNotice) return
+    if (syncStatus === 'conflict') {
+      setSyncNotice(SYNC_CONFLICT_NOTICE)
+    }
+  }, [syncStatus, syncNotice])
+
+  useEffect(() => {
+    if (!syncNotice) return
+    const timer = window.setTimeout(() => setSyncNotice(null), 5000)
+    return () => window.clearTimeout(timer)
+  }, [syncNotice])
 
   function notifyIfStrictRule(mode: StudyMode): void {
     if (mode === 'strict') setStrictCreateNotice(true)
@@ -186,6 +231,77 @@ export default function ContextModePanel(): React.JSX.Element {
             添加规则
           </button>
         </div>
+      </div>
+
+      <div className="context-action-card context-sync-card">
+        <div className="context-action-title">{SYNC_SECTION_TITLE}</div>
+        {syncStatus === 'unconfigured' ? (
+          <p className="metric-hint">{SYNC_UNCONFIGURED_HINT}</p>
+        ) : syncToken ? (
+          <>
+            <div className="context-status-row">
+              <span>{SYNC_PAIRED_HINT}</span>
+              <span className="context-sync-token">{maskSyncToken(syncToken)}</span>
+            </div>
+            <div className="context-status-row">
+              <span>{SYNC_LAST_SYNCED}</span>
+              <span>{formatSyncTime(lastSyncedAt)}</span>
+            </div>
+            {syncStatus === 'syncing' && <p className="metric-hint">同步中…</p>}
+            {(syncError || syncNotice) && (
+              <p className="metric-hint context-sync-error">{syncNotice ?? syncError}</p>
+            )}
+            <div className="context-action-row">
+              <button type="button" className="btn-ghost" onClick={() => void syncNow()}>
+                {SYNC_NOW_BTN}
+              </button>
+              <button type="button" className="btn-ghost" onClick={() => disconnectSync()}>
+                {SYNC_DISCONNECT_BTN}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="context-action-row">
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={syncStatus === 'syncing'}
+                onClick={() => {
+                  void createSync().then((token) => {
+                    if (!token) return
+                    void navigator.clipboard.writeText(token)
+                    setSyncNotice(SYNC_TOKEN_COPIED)
+                  })
+                }}
+              >
+                {SYNC_CREATE_BTN}
+              </button>
+            </div>
+            <div className="context-action-row context-sync-join-row">
+              <input
+                className="context-input context-sync-input"
+                type="text"
+                placeholder={SYNC_JOIN_PLACEHOLDER}
+                value={joinTokenInput}
+                onChange={(e) => setJoinTokenInput(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={!joinTokenInput.trim() || syncStatus === 'syncing'}
+                onClick={() => {
+                  void joinSync(joinTokenInput).then((ok) => {
+                    if (ok) setJoinTokenInput('')
+                  })
+                }}
+              >
+                {SYNC_JOIN_BTN}
+              </button>
+            </div>
+            {syncError && <p className="metric-hint context-sync-error">{syncError}</p>}
+          </>
+        )}
       </div>
 
       {rules.length > 0 && (

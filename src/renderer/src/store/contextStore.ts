@@ -3,14 +3,29 @@ import { matchContextRule } from '../context/matchRule'
 import { isStrictRuleDeleteLocked } from '../context/ruleDeleteLock'
 import {
   CONTEXT_RULES_STORAGE_KEY,
-  MANUAL_MODE_STORAGE_KEY
+  MANUAL_MODE_STORAGE_KEY,
+  SYNC_PUSH_DEBOUNCE_MS
 } from '../constants/thresholds'
+import {
+  bumpLocalUpdatedAt,
+  clearSyncToken,
+  createSyncGroup,
+  getSyncToken,
+  isSupabaseConfigured,
+  joinSyncGroup,
+  pullRules,
+  pushRules,
+  syncRules,
+  type SyncApplyResult
+} from '../services/contextSync'
 import type {
   ContextRule,
   ContextSource,
   GeoPoint,
   StudyMode
 } from '../types/context'
+
+export type SyncStatus = 'idle' | 'syncing' | 'error' | 'conflict' | 'unconfigured'
 
 interface ContextState {
   activeMode: StudyMode
@@ -21,6 +36,10 @@ interface ContextState {
   locationError: string | null
   manualMode: StudyMode | null
   rules: ContextRule[]
+  syncToken: string | null
+  syncStatus: SyncStatus
+  syncError: string | null
+  lastSyncedAt: number | null
   addWifiRule: (ssid: string, mode: StudyMode, label?: string) => void
   addLocationRule: (
     lat: number,
@@ -35,7 +54,14 @@ interface ContextState {
   setCurrentLocation: (location: GeoPoint | null, error?: string | null) => void
   applyContextMatch: () => void
   loadPersisted: () => void
+  initSync: () => Promise<void>
+  createSync: () => Promise<string | null>
+  joinSync: (token: string) => Promise<boolean>
+  disconnectSync: () => void
+  syncNow: () => Promise<void>
 }
+
+let pushDebounceTimer: number | null = null
 
 function normalizeStudyMode(value: string): StudyMode {
   if (value === 'strict' || value === 'study' || value === 'relax') return value
@@ -45,12 +71,15 @@ function normalizeStudyMode(value: string): StudyMode {
   return 'relax'
 }
 
+function normalizeRules(rules: ContextRule[]): ContextRule[] {
+  return rules.map((rule) => ({ ...rule, mode: normalizeStudyMode(rule.mode) }))
+}
+
 function loadRules(): ContextRule[] {
   try {
     const raw = localStorage.getItem(CONTEXT_RULES_STORAGE_KEY)
     if (!raw) return []
-    const parsed = JSON.parse(raw) as ContextRule[]
-    return parsed.map((rule) => ({ ...rule, mode: normalizeStudyMode(rule.mode) }))
+    return normalizeRules(JSON.parse(raw) as ContextRule[])
   } catch {
     return []
   }
@@ -88,7 +117,93 @@ function recomputeMatch(state: {
   })
 }
 
-export const useContextStore = create<ContextState>((set) => ({
+function applyPulledRules(
+  set: (
+    partial:
+      | Partial<ContextState>
+      | ((state: ContextState) => Partial<ContextState>)
+  ) => void,
+  rules: ContextRule[],
+  syncStatus: SyncStatus,
+  syncError: string | null
+): void {
+  saveRules(rules)
+  set((state) => {
+    const next = { ...state, rules, syncStatus, syncError, lastSyncedAt: Date.now() }
+    return { ...next, ...recomputeMatch(next) }
+  })
+}
+
+function applySyncResult(
+  set: (
+    partial:
+      | Partial<ContextState>
+      | ((state: ContextState) => Partial<ContextState>)
+  ) => void,
+  result: SyncApplyResult
+): void {
+  if (result.action === 'pulled') {
+    applyPulledRules(set, result.rules, 'idle', null)
+    return
+  }
+  if (result.action === 'pushed') {
+    set({ syncStatus: 'idle', syncError: null, lastSyncedAt: Date.now() })
+    return
+  }
+  if (result.action === 'conflict') {
+    void pullRules().then((pullResult) => {
+      if (pullResult.action === 'pulled') {
+        applyPulledRules(set, pullResult.rules, 'conflict', '同步冲突，已采用较新版本')
+      } else {
+        set({ syncStatus: 'conflict', syncError: '同步冲突，已采用较新版本' })
+      }
+    })
+    return
+  }
+  if (result.action === 'error') {
+    set({ syncStatus: 'error', syncError: result.message })
+    return
+  }
+  set({ syncStatus: 'idle', syncError: null })
+}
+
+function scheduleCloudPush(
+  get: () => ContextState,
+  set: (
+    partial:
+      | Partial<ContextState>
+      | ((state: ContextState) => Partial<ContextState>)
+  ) => void
+): void {
+  if (!get().syncToken || !isSupabaseConfigured()) return
+  if (pushDebounceTimer) window.clearTimeout(pushDebounceTimer)
+  pushDebounceTimer = window.setTimeout(() => {
+    void (async () => {
+      set({ syncStatus: 'syncing', syncError: null })
+      const result = await pushRules(get().rules)
+      applySyncResult(set, result)
+    })()
+  }, SYNC_PUSH_DEBOUNCE_MS)
+}
+
+function afterLocalRulesChange(
+  state: ContextState,
+  set: (
+    partial:
+      | Partial<ContextState>
+      | ((state: ContextState) => Partial<ContextState>)
+  ) => void,
+  get: () => ContextState,
+  rules: ContextRule[]
+): Partial<ContextState> {
+  saveRules(rules)
+  bumpLocalUpdatedAt()
+  scheduleCloudPush(get, set)
+  const next = { ...state, rules }
+  return { ...next, ...recomputeMatch(next) }
+}
+
+export const useContextStore = create<ContextState>((set, get) => ({
   activeMode: 'relax',
   contextSource: 'default',
   matchedRuleId: null,
@@ -97,14 +212,82 @@ export const useContextStore = create<ContextState>((set) => ({
   locationError: null,
   manualMode: null,
   rules: [],
+  syncToken: null,
+  syncStatus: (isSupabaseConfigured() ? 'idle' : 'unconfigured') as SyncStatus,
+  syncError: null,
+  lastSyncedAt: null,
 
   loadPersisted: () => {
     const rules = loadRules()
     const manualMode = loadManualMode()
+    const syncToken = getSyncToken()
     set((state) => {
-      const next = { ...state, rules, manualMode }
+      const next = {
+        ...state,
+        rules,
+        manualMode,
+        syncToken,
+        syncStatus: (isSupabaseConfigured() ? 'idle' : 'unconfigured') as SyncStatus
+      }
       return { ...next, ...recomputeMatch(next) }
     })
+    void get().initSync()
+  },
+
+  initSync: async () => {
+    if (!isSupabaseConfigured()) {
+      set({ syncStatus: 'unconfigured', syncToken: getSyncToken() })
+      return
+    }
+    const syncToken = getSyncToken()
+    if (!syncToken) {
+      set({ syncToken: null, syncStatus: 'idle' })
+      return
+    }
+    set({ syncToken, syncStatus: 'syncing', syncError: null })
+    const result = await syncRules(get().rules)
+    applySyncResult(set, result)
+  },
+
+  createSync: async () => {
+    if (!isSupabaseConfigured()) return null
+    set({ syncStatus: 'syncing', syncError: null })
+    const result = await createSyncGroup(get().rules)
+    if ('error' in result) {
+      set({ syncStatus: 'error', syncError: result.error })
+      return null
+    }
+    set({ syncToken: result.token, syncStatus: 'idle', lastSyncedAt: Date.now(), syncError: null })
+    return result.token
+  },
+
+  joinSync: async (token) => {
+    if (!isSupabaseConfigured()) return false
+    set({ syncStatus: 'syncing', syncError: null })
+    const joined = await joinSyncGroup(token)
+    if ('error' in joined) {
+      set({ syncStatus: 'error', syncError: joined.error })
+      return false
+    }
+    set({ syncToken: token.trim() })
+    await get().syncNow()
+    return true
+  },
+
+  disconnectSync: () => {
+    clearSyncToken()
+    set({
+      syncToken: null,
+      syncStatus: (isSupabaseConfigured() ? 'idle' : 'unconfigured') as SyncStatus,
+      syncError: null
+    })
+  },
+
+  syncNow: async () => {
+    if (!isSupabaseConfigured() || !get().syncToken) return
+    set({ syncStatus: 'syncing', syncError: null })
+    const result = await syncRules(get().rules)
+    applySyncResult(set, result)
   },
 
   addWifiRule: (ssid, mode, label) => {
@@ -120,9 +303,7 @@ export const useContextStore = create<ContextState>((set) => ({
     }
     set((state) => {
       const rules = [...state.rules, rule]
-      saveRules(rules)
-      const next = { ...state, rules }
-      return { ...next, ...recomputeMatch(next) }
+      return afterLocalRulesChange(state, set, get, rules)
     })
   },
 
@@ -139,9 +320,7 @@ export const useContextStore = create<ContextState>((set) => ({
     }
     set((state) => {
       const rules = [...state.rules, rule]
-      saveRules(rules)
-      const next = { ...state, rules }
-      return { ...next, ...recomputeMatch(next) }
+      return afterLocalRulesChange(state, set, get, rules)
     })
   },
 
@@ -150,9 +329,7 @@ export const useContextStore = create<ContextState>((set) => ({
       const rule = state.rules.find((r) => r.id === id)
       if (rule && isStrictRuleDeleteLocked(rule)) return state
       const rules = state.rules.filter((rule) => rule.id !== id)
-      saveRules(rules)
-      const next = { ...state, rules }
-      return { ...next, ...recomputeMatch(next) }
+      return afterLocalRulesChange(state, set, get, rules)
     })
   },
 

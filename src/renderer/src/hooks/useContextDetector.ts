@@ -43,6 +43,8 @@ export function useContextDetector(): void {
   const setCurrentWifi = useContextStore((s) => s.setCurrentWifi)
   const setCurrentLocation = useContextStore((s) => s.setCurrentLocation)
   const loadPersisted = useContextStore((s) => s.loadPersisted)
+  const syncNow = useContextStore((s) => s.syncNow)
+  const syncToken = useContextStore((s) => s.syncToken)
 
   // On mount: restore WiFi/location rules and manual mode override from localStorage,
   // then recompute activeMode before the first WiFi/geolocation poll runs.
@@ -71,16 +73,19 @@ export function useContextDetector(): void {
             'Windows 定位需 GOOGLE_API_KEY（见 README）；当前仅可用 WiFi / 手动模式'
           )
         }
-        return
+      } else {
+        const result = await readGeolocation(platform)
+        if (cancelled) return
+
+        if (result.ok) {
+          setCurrentLocation(result.point, null)
+        } else {
+          setCurrentLocation(null, result.message)
+        }
       }
 
-      const result = await readGeolocation(platform)
-      if (cancelled) return
-
-      if (result.ok) {
-        setCurrentLocation(result.point, null)
-      } else {
-        setCurrentLocation(null, result.message)
+      if (!cancelled && syncToken) {
+        void syncNow()
       }
     }
 
@@ -90,5 +95,5 @@ export function useContextDetector(): void {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [setCurrentWifi, setCurrentLocation])
+  }, [setCurrentWifi, setCurrentLocation, syncToken, syncNow])
 }

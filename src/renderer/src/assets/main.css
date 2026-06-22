@@ -169,6 +169,24 @@ body {
   border: 1px solid #243044;
 }
 
+.context-sync-join-row {
+  flex-wrap: wrap;
+}
+
+.context-sync-input {
+  flex: 1;
+  min-width: 160px;
+}
+
+.context-sync-token {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.context-sync-error {
+  color: #fca5a5;
+}
+
 .context-action-title {
   font-size: 0.8rem;
   color: #8b9cb3;
