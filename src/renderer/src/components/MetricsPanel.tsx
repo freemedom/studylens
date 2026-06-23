@@ -96,7 +96,7 @@ export default function MetricsPanel(): React.JSX.Element {
 
         <div className="metric-card">
           <div className="metric-label">Blinks per minute</div>
-          <div className="metric-value">
+          <div className="metric-value small">
             {sessionActive ? (
               <>
                 {blinksPerMinute}
@@ -115,7 +115,13 @@ export default function MetricsPanel(): React.JSX.Element {
 
         <div className={`metric-card${!sessionActive ? ' metric-card-muted' : ''}`}>
           <div className="metric-label">Screen distance</div>
-          <div className="metric-value small">
+          <div
+            className={
+              sessionActive
+                ? `metric-badge distance-badge status-${distanceStatus}`
+                : 'metric-badge posture-unknown'
+            }
+          >
             {sessionActive ? DISTANCE_LABELS[distanceStatus] : '—'}
           </div>
           {sessionActive && (

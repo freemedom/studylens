@@ -545,6 +545,26 @@ body {
   background: #4b5563;
 }
 
+.distance-badge.status-good {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+
+.distance-badge.status-too_near {
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+
+.distance-badge.status-too_far {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.distance-badge.status-none {
+  background: rgba(139, 156, 179, 0.2);
+  color: #8b9cb3;
+}
+
 .fatigue-fill {
   height: 100%;
   border-radius: 4px;
