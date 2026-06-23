@@ -95,10 +95,21 @@ export default function MetricsPanel(): React.JSX.Element {
         </div>
 
         <div className="metric-card">
-          <div className="metric-label">Eyes</div>
-          <div className="metric-value">{sessionActive ? blinksPerMinute : '—'}</div>
+          <div className="metric-label">Blinks per minute</div>
+          <div className="metric-value">
+            {sessionActive ? (
+              <>
+                {blinksPerMinute}
+                <span className="metric-unit">/ min</span>
+              </>
+            ) : (
+              '—'
+            )}
+          </div>
           <div className="metric-hint">
-            {sessionActive ? `Total: ${blinkCount}` : 'Blinks per minute'}
+            {sessionActive
+              ? `Total: ${blinkCount} blinks`
+              : 'Starts counting when session is active'}
           </div>
         </div>
 

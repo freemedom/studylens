@@ -361,12 +361,15 @@ body {
 
 .metrics-summary-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
-.metrics-summary-grid .metric-value {
-  font-size: 1.5rem;
+.metric-value .metric-unit {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #8b9cb3;
+  margin-left: 4px;
 }
 
 .metric-card-muted {
