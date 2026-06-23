@@ -93,7 +93,7 @@ export default function MetricsPanel(): React.JSX.Element {
 
       <div className="metrics-summary-grid">
         <div className="metric-card">
-          <div className="metric-label">Focus & fatigue</div>
+          <div className="metric-label">Mood</div>
           <div className={`metric-badge ${MOOD_CLASS[mood]}`}>{MOOD_LABELS[mood]}</div>
           <div className="metric-hint">Fatigue: {fatigueLevelLabel(fatigueLevel)}</div>
           <div className="fatigue-bar">
