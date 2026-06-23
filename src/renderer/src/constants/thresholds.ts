@@ -36,3 +36,4 @@ export const SYNC_TOKEN_STORAGE_KEY = 'studylens_sync_token'
 export const SYNC_LOCAL_UPDATED_AT_KEY = 'studylens_sync_local_updated_at'
 export const SYNC_POLL_MS = 30_000
 export const SYNC_PUSH_DEBOUNCE_MS = 500
+export const SYNC_DEVICE_ID_KEY = 'studylens_sync_device_id'

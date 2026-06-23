@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { matchContextRule } from '../context/matchRule'
+import { matchAutoContextRule } from '../context/matchRule'
+import { pickStrictestMode } from '../context/modeProfiles'
 import { isStrictRuleDeleteLocked } from '../context/ruleDeleteLock'
 import {
   CONTEXT_RULES_STORAGE_KEY,
@@ -10,10 +11,13 @@ import {
   bumpLocalUpdatedAt,
   clearSyncToken,
   createSyncGroup,
+  getOrCreateDeviceId,
   getSyncToken,
   isSupabaseConfigured,
   joinSyncGroup,
+  pullPeerModes,
   pullRules,
+  pushPeerMode,
   pushRules,
   syncRules,
   type SyncApplyResult
@@ -22,6 +26,7 @@ import type {
   ContextRule,
   ContextSource,
   GeoPoint,
+  PeerModeEntry,
   StudyMode
 } from '../types/context'
 
@@ -36,6 +41,8 @@ interface ContextState {
   locationError: string | null
   manualMode: StudyMode | null
   rules: ContextRule[]
+  deviceId: string
+  peerModes: Record<string, PeerModeEntry>
   syncToken: string | null
   syncStatus: SyncStatus
   syncError: string | null
@@ -62,6 +69,7 @@ interface ContextState {
 }
 
 let pushDebounceTimer: number | null = null
+let peerModePushTimer: number | null = null
 
 function normalizeStudyMode(value: string): StudyMode {
   if (value === 'strict' || value === 'study' || value === 'relax') return value
@@ -108,13 +116,98 @@ function recomputeMatch(state: {
   manualMode: StudyMode | null
   currentWifi: string | null
   currentLocation: GeoPoint | null
+  syncToken: string | null
+  deviceId: string
+  peerModes: Record<string, PeerModeEntry>
 }): Pick<ContextState, 'activeMode' | 'contextSource' | 'matchedRuleId'> {
-  return matchContextRule({
+  if (state.manualMode) {
+    return {
+      activeMode: state.manualMode,
+      contextSource: 'manual',
+      matchedRuleId: null
+    }
+  }
+
+  const auto = matchAutoContextRule({
     rules: state.rules,
-    manualMode: state.manualMode,
     currentWifi: state.currentWifi,
     currentLocation: state.currentLocation
   })
+
+  if (!state.syncToken) {
+    return auto
+  }
+
+  const remoteModes = Object.entries(state.peerModes)
+    .filter(([id]) => id !== state.deviceId)
+    .map(([, entry]) => entry.mode)
+
+  if (remoteModes.length === 0) {
+    return auto
+  }
+
+  const merged = pickStrictestMode([auto.activeMode, ...remoteModes])
+  if (merged !== auto.activeMode) {
+    return {
+      activeMode: merged,
+      contextSource: 'sync',
+      matchedRuleId: auto.matchedRuleId
+    }
+  }
+
+  return auto
+}
+
+async function pushLocalAutoPeerMode(
+  get: () => ContextState,
+  set: (
+    partial:
+      | Partial<ContextState>
+      | ((state: ContextState) => Partial<ContextState>)
+  ) => void
+): Promise<void> {
+  const state = get()
+  if (!state.syncToken || !isSupabaseConfigured()) return
+  const auto = matchAutoContextRule({
+    rules: state.rules,
+    currentWifi: state.currentWifi,
+    currentLocation: state.currentLocation
+  })
+  const result = await pushPeerMode(state.deviceId, auto.activeMode, state.peerModes)
+  if ('error' in result) return
+  set({ peerModes: result.peerModes })
+}
+
+function schedulePeerModePush(
+  get: () => ContextState,
+  set: (
+    partial:
+      | Partial<ContextState>
+      | ((state: ContextState) => Partial<ContextState>)
+  ) => void
+): void {
+  if (!get().syncToken || !isSupabaseConfigured()) return
+  if (peerModePushTimer) window.clearTimeout(peerModePushTimer)
+  peerModePushTimer = window.setTimeout(() => {
+    void pushLocalAutoPeerMode(get, set)
+  }, SYNC_PUSH_DEBOUNCE_MS)
+}
+
+async function pullAndApplyPeerModes(
+  get: () => ContextState,
+  set: (
+    partial:
+      | Partial<ContextState>
+      | ((state: ContextState) => Partial<ContextState>)
+  ) => void
+): Promise<void> {
+  const result = await pullPeerModes()
+  if ('error' in result) return
+  set((state) => {
+    const next = { ...state, peerModes: result.peerModes }
+    return { ...next, ...recomputeMatch(next) }
+  })
+  schedulePeerModePush(get, set)
 }
 
 function applyPulledRules(
@@ -186,6 +279,22 @@ function scheduleCloudPush(
   }, SYNC_PUSH_DEBOUNCE_MS)
 }
 
+function applyMatchPatch(
+  state: ContextState,
+  get: () => ContextState,
+  set: (
+    partial:
+      | Partial<ContextState>
+      | ((state: ContextState) => Partial<ContextState>)
+  ) => void,
+  patch: Partial<ContextState>
+): Partial<ContextState> {
+  const next = { ...state, ...patch }
+  const match = recomputeMatch(next)
+  schedulePeerModePush(get, set)
+  return { ...next, ...match }
+}
+
 function afterLocalRulesChange(
   state: ContextState,
   set: (
@@ -199,8 +308,7 @@ function afterLocalRulesChange(
   saveRules(rules)
   bumpLocalUpdatedAt()
   scheduleCloudPush(get, set)
-  const next = { ...state, rules }
-  return { ...next, ...recomputeMatch(next) }
+  return applyMatchPatch(state, get, set, { rules })
 }
 
 export const useContextStore = create<ContextState>((set, get) => ({
@@ -212,6 +320,8 @@ export const useContextStore = create<ContextState>((set, get) => ({
   locationError: null,
   manualMode: null,
   rules: [],
+  deviceId: getOrCreateDeviceId(),
+  peerModes: {},
   syncToken: null,
   syncStatus: (isSupabaseConfigured() ? 'idle' : 'unconfigured') as SyncStatus,
   syncError: null,
@@ -245,8 +355,10 @@ export const useContextStore = create<ContextState>((set, get) => ({
       return
     }
     set({ syncToken, syncStatus: 'syncing', syncError: null })
+    await pullAndApplyPeerModes(get, set)
     const result = await syncRules(get().rules)
     applySyncResult(set, result)
+    await pushLocalAutoPeerMode(get, set)
   },
 
   createSync: async () => {
@@ -258,6 +370,7 @@ export const useContextStore = create<ContextState>((set, get) => ({
       return null
     }
     set({ syncToken: result.token, syncStatus: 'idle', lastSyncedAt: Date.now(), syncError: null })
+    await pushLocalAutoPeerMode(get, set)
     return result.token
   },
 
@@ -276,18 +389,25 @@ export const useContextStore = create<ContextState>((set, get) => ({
 
   disconnectSync: () => {
     clearSyncToken()
-    set({
-      syncToken: null,
-      syncStatus: (isSupabaseConfigured() ? 'idle' : 'unconfigured') as SyncStatus,
-      syncError: null
+    set((state) => {
+      const next = {
+        ...state,
+        syncToken: null,
+        peerModes: {},
+        syncStatus: (isSupabaseConfigured() ? 'idle' : 'unconfigured') as SyncStatus,
+        syncError: null
+      }
+      return { ...next, ...recomputeMatch(next) }
     })
   },
 
   syncNow: async () => {
     if (!isSupabaseConfigured() || !get().syncToken) return
     set({ syncStatus: 'syncing', syncError: null })
+    await pullAndApplyPeerModes(get, set)
     const result = await syncRules(get().rules)
     applySyncResult(set, result)
+    await pushLocalAutoPeerMode(get, set)
   },
 
   addWifiRule: (ssid, mode, label) => {
@@ -345,17 +465,13 @@ export const useContextStore = create<ContextState>((set, get) => ({
   // Updates `currentWifi`, then re-runs matchContextRule so activeMode / contextSource
   // change immediately if the network matches a saved WiFi rule (unless manualMode is set).
   setCurrentWifi: (ssid) => {
-    set((state) => {
-      const next = { ...state, currentWifi: ssid }
-      return { ...next, ...recomputeMatch(next) }
-    })
+    set((state) => applyMatchPatch(state, get, set, { currentWifi: ssid }))
   },
 
   setCurrentLocation: (location, error = null) => {
-    set((state) => {
-      const next = { ...state, currentLocation: location, locationError: error }
-      return { ...next, ...recomputeMatch(next) }
-    })
+    set((state) =>
+      applyMatchPatch(state, get, set, { currentLocation: location, locationError: error })
+    )
   },
 
   applyContextMatch: () => {

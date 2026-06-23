@@ -1,9 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import {
+  SYNC_DEVICE_ID_KEY,
   SYNC_LOCAL_UPDATED_AT_KEY,
   SYNC_TOKEN_STORAGE_KEY
 } from '../constants/thresholds'
-import type { ContextRule, StudyMode } from '../types/context'
+import type { ContextRule, PeerModeEntry, StudyMode } from '../types/context'
 
 const TABLE = 'context_sync'
 
@@ -11,6 +12,7 @@ type RemoteRow = {
   sync_token: string
   rules: unknown
   updated_at: number
+  peer_modes: unknown
 }
 
 export type SyncApplyResult =
@@ -50,6 +52,14 @@ export function saveSyncToken(token: string): void {
 
 export function clearSyncToken(): void {
   localStorage.removeItem(SYNC_TOKEN_STORAGE_KEY)
+}
+
+export function getOrCreateDeviceId(): string {
+  const existing = localStorage.getItem(SYNC_DEVICE_ID_KEY)
+  if (existing) return existing
+  const id = crypto.randomUUID()
+  localStorage.setItem(SYNC_DEVICE_ID_KEY, id)
+  return id
 }
 
 export function getLocalUpdatedAt(): number {
@@ -111,6 +121,33 @@ export function parseContextRules(raw: unknown): ContextRule[] | null {
   return rules
 }
 
+export function parsePeerModes(raw: unknown): Record<string, PeerModeEntry> | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const parsed: Record<string, PeerModeEntry> = {}
+  for (const [deviceId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+    const record = value as Record<string, unknown>
+    const mode = record.mode
+    const updatedAt =
+      typeof record.updated_at === 'number'
+        ? record.updated_at
+        : typeof record.updatedAt === 'number'
+          ? record.updatedAt
+          : null
+    if (!isStudyMode(mode) || updatedAt === null) return null
+    parsed[deviceId] = { mode, updatedAt }
+  }
+  return parsed
+}
+
+function peerModesToDb(peerModes: Record<string, PeerModeEntry>): Record<string, { mode: StudyMode; updated_at: number }> {
+  const out: Record<string, { mode: StudyMode; updated_at: number }> = {}
+  for (const [deviceId, entry] of Object.entries(peerModes)) {
+    out[deviceId] = { mode: entry.mode, updated_at: entry.updatedAt }
+  }
+  return out
+}
+
 function createSyncToken(): string {
   return crypto.randomUUID()
 }
@@ -120,7 +157,7 @@ async function fetchRemoteRow(token: string): Promise<RemoteRow | null> {
   if (!supabase) return null
   const { data, error } = await supabase
     .from(TABLE)
-    .select('sync_token, rules, updated_at')
+    .select('sync_token, rules, updated_at, peer_modes')
     .eq('sync_token', token)
     .maybeSingle()
   if (error) throw new Error(error.message)
@@ -138,7 +175,8 @@ export async function createSyncGroup(
   const { error } = await supabase.from(TABLE).upsert({
     sync_token: token,
     rules,
-    updated_at: updatedAt
+    updated_at: updatedAt,
+    peer_modes: {}
   })
   if (error) return { error: error.message }
   saveSyncToken(token)
@@ -193,10 +231,14 @@ export async function pushRules(rules: ContextRule[]): Promise<SyncApplyResult> 
       return { action: 'conflict' }
     }
     const updatedAt = bumpLocalUpdatedAt()
+    const peerModesPayload = remote
+      ? peerModesToDb(parsePeerModes(remote.peer_modes) ?? {})
+      : {}
     const { error } = await supabase.from(TABLE).upsert({
       sync_token: token,
       rules,
-      updated_at: updatedAt
+      updated_at: updatedAt,
+      peer_modes: peerModesPayload
     })
     if (error) return { action: 'error', message: error.message }
     return { action: 'pushed', updatedAt }
@@ -210,4 +252,48 @@ export async function syncRules(localRules: ContextRule[]): Promise<SyncApplyRes
   if (pulled.action === 'pulled') return pulled
   if (pulled.action === 'error') return pulled
   return pushRules(localRules)
+}
+
+export async function pullPeerModes(): Promise<
+  { peerModes: Record<string, PeerModeEntry> } | { error: string }
+> {
+  const token = getSyncToken()
+  if (!token) return { peerModes: {} }
+  try {
+    const remote = await fetchRemoteRow(token)
+    if (!remote) return { error: '云端同步组不存在' }
+    const peerModes = parsePeerModes(remote.peer_modes)
+    if (!peerModes) return { error: '云端模式格式无效' }
+    return { peerModes }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : '拉取模式失败' }
+  }
+}
+
+export async function pushPeerMode(
+  deviceId: string,
+  mode: StudyMode,
+  existingPeerModes: Record<string, PeerModeEntry>
+): Promise<{ peerModes: Record<string, PeerModeEntry> } | { error: string }> {
+  const token = getSyncToken()
+  if (!token) return { peerModes: existingPeerModes }
+  const supabase = getSupabase()
+  if (!supabase) return { error: 'Supabase 未配置' }
+  try {
+    const remote = await fetchRemoteRow(token)
+    if (!remote) return { error: '云端同步组不存在' }
+    const remotePeerModes = parsePeerModes(remote.peer_modes) ?? {}
+    const nextPeerModes = {
+      ...remotePeerModes,
+      [deviceId]: { mode, updatedAt: Date.now() }
+    }
+    const { error } = await supabase
+      .from(TABLE)
+      .update({ peer_modes: peerModesToDb(nextPeerModes) })
+      .eq('sync_token', token)
+    if (error) return { error: error.message }
+    return { peerModes: nextPeerModes }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : '推送模式失败' }
+  }
 }

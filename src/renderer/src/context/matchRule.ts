@@ -71,6 +71,14 @@ function pickRepresentativeRule(matched: ContextRule[], activeMode: StudyMode): 
   return pool.find((rule) => rule.kind === 'wifi') ?? pool[0]
 }
 
+export function matchAutoContextRule(input: {
+  rules: ContextRule[]
+  currentWifi: string | null
+  currentLocation: GeoPoint | null
+}): ContextMatchResult {
+  return matchContextRule({ ...input, manualMode: null })
+}
+
 export function matchContextRule(input: {
   rules: ContextRule[]
   manualMode: StudyMode | null

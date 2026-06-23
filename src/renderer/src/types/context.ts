@@ -7,7 +7,12 @@ export type StudyMode = 'strict' | 'study' | 'relax'
  * Describes which signal *attributed* the active mode in UI (see `matchRule.ts`):
  * manual lock; or the representative WiFi/location rule after strict > study > relax merge.
  */
-export type ContextSource = 'wifi' | 'location' | 'manual' | 'default'
+export type ContextSource = 'wifi' | 'location' | 'manual' | 'default' | 'sync'
+
+export type PeerModeEntry = {
+  mode: StudyMode
+  updatedAt: number
+}
 export type WifiContextRule = {
   id: string
   kind: 'wifi'

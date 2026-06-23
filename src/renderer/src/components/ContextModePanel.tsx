@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  CONTEXT_SOURCE_SYNC,
   LOCATION_RADIUS_LABEL,
   STRICT_RULE_DELETE_NOTICE,
   SYNC_CONFLICT_NOTICE,
@@ -119,9 +120,11 @@ export default function ContextModePanel(): React.JSX.Element {
       ? `WiFi「${matchedRule.ssid}」`
       : contextSource === 'location' && matchedRule?.kind === 'location'
         ? `定位半径 ${matchedRule.radiusM}m`
-        : contextSource === 'manual'
-          ? '手动锁定'
-          : '默认（无匹配规则）'
+        : contextSource === 'sync'
+          ? CONTEXT_SOURCE_SYNC
+          : contextSource === 'manual'
+            ? '手动锁定'
+            : '默认（无匹配规则）'
 
   return (
     <div className="context-mode-panel">
