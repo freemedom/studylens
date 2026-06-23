@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import ContextModePanel from './ContextModePanel'
 import MetricsPanel from './MetricsPanel'
+import SessionHistoryPanel from './SessionHistoryPanel'
 
-type SidePanelTab = 'metrics' | 'context'
+type SidePanelTab = 'live' | 'context' | 'history'
 
 const TABS: { id: SidePanelTab; label: string }[] = [
-  { id: 'metrics', label: 'Live metrics' },
-  { id: 'context', label: 'Context modes' }
+  { id: 'live', label: 'Live' },
+  { id: 'context', label: 'Context' },
+  { id: 'history', label: 'History' }
 ]
 
 export default function SidePanelTabs(): React.JSX.Element {
-  const [activeTab, setActiveTab] = useState<SidePanelTab>('metrics')
+  const [activeTab, setActiveTab] = useState<SidePanelTab>('live')
 
   return (
     <div className="side-panel-tabs">
@@ -29,7 +31,9 @@ export default function SidePanelTabs(): React.JSX.Element {
         ))}
       </div>
       <div className="side-panel-content" role="tabpanel">
-        {activeTab === 'metrics' ? <MetricsPanel /> : <ContextModePanel />}
+        {activeTab === 'live' && <MetricsPanel />}
+        {activeTab === 'context' && <ContextModePanel />}
+        {activeTab === 'history' && <SessionHistoryPanel />}
       </div>
     </div>
   )

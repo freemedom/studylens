@@ -83,8 +83,8 @@ body {
   flex: 1;
   border: 1px solid #243044;
   border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.85rem;
+  padding: 8px 10px;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   background: #141c28;
@@ -344,6 +344,118 @@ body {
   padding: 4px;
 }
 
+.metrics-session-banner {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #8b9cb3;
+  background: #141c28;
+  border: 1px solid #243044;
+}
+
+.metrics-session-banner-active {
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.metrics-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.metrics-summary-grid .metric-value {
+  font-size: 1.5rem;
+}
+
+.metric-card-muted {
+  opacity: 0.65;
+}
+
+.metrics-section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #a8b8cc;
+  margin-bottom: 8px;
+}
+
+.metrics-advanced {
+  border: 1px solid #243044;
+  border-radius: 10px;
+  background: #141c28;
+}
+
+.metrics-advanced-summary {
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #8b9cb3;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.metrics-advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+.metrics-advanced-summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.metrics-advanced[open] .metrics-advanced-summary::before {
+  transform: rotate(90deg);
+}
+
+.metrics-advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.metrics-advanced-body .metric-card {
+  padding: 10px 12px;
+}
+
+.metrics-advanced-body .metric-value {
+  font-size: 1rem;
+}
+
+.session-history-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px;
+}
+
+.session-history-current .session-stats {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.session-history-empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #8b9cb3;
+  line-height: 1.45;
+}
+
+.session-history-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.75rem;
+  color: #a8b8cc;
+  line-height: 1.5;
+}
+
+.session-history-list li + li {
+  margin-top: 6px;
+}
+
 .metrics-panel h2 {
   margin: 0 0 4px;
   font-size: 1.1rem;
@@ -439,7 +551,8 @@ body {
 
 .session-stats {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
   font-size: 0.8rem;
   color: #8b9cb3;
 }
