@@ -5,6 +5,7 @@ import type {
   CalibrationPhase,
   DistanceStatus,
   Mood,
+  MoodSignals,
   PostureBaseline,
   SessionSummary
 } from '../types/metrics'
@@ -18,6 +19,7 @@ interface SessionState {
   blinksPerMinute: number
   ear: number
   mood: Mood
+  moodSignals: MoodSignals | null
   faceRatio: number
   distanceStatus: DistanceStatus
   fatigueLevel: number
@@ -54,6 +56,7 @@ interface SessionState {
     blinksPerMinute: number
     ear: number
     mood: Mood
+    moodSignals: MoodSignals | null
     faceRatio: number
     distanceStatus: DistanceStatus
     fatigueLevel: number
@@ -97,6 +100,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   blinksPerMinute: 0,
   ear: 0,
   mood: 'unknown',
+  moodSignals: null,
   faceRatio: 0,
   distanceStatus: 'none',
   fatigueLevel: 0,
@@ -135,6 +139,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       postureAlerts: 0,
       blinkCount: 0,
       blinksPerMinute: 0,
+      mood: 'unknown',
+      moodSignals: null,
       distanceAlerts: 0,
       tiredSamples: 0,
       alertMessage: null,
@@ -190,6 +196,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       calibrationSecondsLeft: 0,
       calibrationMessage: null,
       postureBaseline: null,
+      moodSignals: null,
       showPostureHint: false
     })
   },

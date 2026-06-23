@@ -1,4 +1,10 @@
 import { useSessionStore } from '../store/sessionStore'
+import {
+  BROW_RESTLESS,
+  EAR_TIRED,
+  HEAD_JITTER_RESTLESS,
+  MOUTH_FROWN_RESTLESS
+} from '../constants/thresholds'
 import type { ActivePostureIssue, DistanceStatus, Mood } from '../types/metrics'
 
 const MOOD_LABELS: Record<Mood, string> = {
@@ -45,6 +51,7 @@ export default function MetricsPanel(): React.JSX.Element {
   const blinksPerMinute = useSessionStore((s) => s.blinksPerMinute)
   const ear = useSessionStore((s) => s.ear)
   const mood = useSessionStore((s) => s.mood)
+  const moodSignals = useSessionStore((s) => s.moodSignals)
   const faceRatio = useSessionStore((s) => s.faceRatio)
   const distanceStatus = useSessionStore((s) => s.distanceStatus)
   const fatigueLevel = useSessionStore((s) => s.fatigueLevel)
@@ -168,16 +175,41 @@ export default function MetricsPanel(): React.JSX.Element {
         <div className="metrics-advanced-body">
           <div className="metric-card">
             <div className="metric-label">EAR (eye aspect ratio)</div>
-            <div className="metric-value small">{sessionActive ? ear.toFixed(3) : '—'}</div>
+            <div className="metric-value small">{moodSignals ? ear.toFixed(3) : '—'}</div>
+            <div className="metric-hint">Tired if &lt; {EAR_TIRED}</div>
           </div>
+
+          <div className="metrics-section-title">Mood signals</div>
+          <div className="metric-card">
+            <div className="metric-label">Head jitter (2s)</div>
+            <div className="metric-value small">
+              {moodSignals ? moodSignals.headJitter.toFixed(4) : '—'}
+            </div>
+            <div className="metric-hint">Restless if &gt; {HEAD_JITTER_RESTLESS}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Brow score</div>
+            <div className="metric-value small">
+              {moodSignals ? moodSignals.brow.toFixed(3) : '—'}
+            </div>
+            <div className="metric-hint">Restless if &gt; {BROW_RESTLESS}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Mouth frown</div>
+            <div className="metric-value small">
+              {moodSignals ? moodSignals.mouth.toFixed(3) : '—'}
+            </div>
+            <div className="metric-hint">Restless if &gt; {MOUTH_FROWN_RESTLESS}</div>
+          </div>
+
           <div className="metric-card">
             <div className="metric-label">Forward / head tilt offset</div>
             <div className="metric-value small">
-              {sessionActive && postureTrackable
+              {postureTrackable
                 ? `${forwardRatio.toFixed(3)} / ${headOffsetRatio.toFixed(3)}`
                 : '—'}
             </div>
-            {postureBaseline && sessionActive && (
+            {postureBaseline && (
               <div className="metric-hint">
                 Baseline {postureBaseline.forwardRatio.toFixed(3)} /{' '}
                 {postureBaseline.headOffsetRatio.toFixed(3)}
@@ -187,11 +219,11 @@ export default function MetricsPanel(): React.JSX.Element {
           <div className="metric-card">
             <div className="metric-label">Neck angle / shoulder tilt</div>
             <div className="metric-value small">
-              {sessionActive && postureTrackable
+              {postureTrackable
                 ? `${neckAngleDeg.toFixed(1)}° / ${shoulderTiltDeg.toFixed(1)}°`
                 : '—'}
             </div>
-            {postureBaseline && sessionActive && (
+            {postureBaseline && (
               <div className="metric-hint">
                 Baseline {postureBaseline.neckAngleDeg.toFixed(1)}° /{' '}
                 {postureBaseline.shoulderTiltDeg.toFixed(1)}°

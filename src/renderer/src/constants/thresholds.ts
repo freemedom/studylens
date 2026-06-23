@@ -1,5 +1,9 @@
 export const BLINK_EAR_THRESHOLD = 0.21
 export const BLINK_RATE_LOW = 10
+export const EAR_TIRED = 0.19
+export const HEAD_JITTER_RESTLESS = 0.035
+export const BROW_RESTLESS = 1.2
+export const MOUTH_FROWN_RESTLESS = 0.8
 export const FACE_RATIO_NEAR = 0.42
 export const FACE_RATIO_FAR = 0.20
 export const FATIGUE_BREAK_SECONDS = 20

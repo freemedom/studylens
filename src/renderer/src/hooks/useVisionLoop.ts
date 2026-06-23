@@ -249,7 +249,7 @@ export function useVisionLoop(
               const blink = blinkDetector.current.update(landmarks, wallNow)
               const faceRatio = estimateFaceRatio(landmarks)
               const distanceStatus = estimateDistanceStatus(faceRatio)
-              const mood = expressionEstimator.current.update(
+              const { mood, signals: moodSignals } = expressionEstimator.current.update(
                 blendshapes,
                 nose,
                 blink.blinksPerMinute,
@@ -259,7 +259,7 @@ export function useVisionLoop(
               const fatigueLevel = computeFatigueLevel(blink.blinksPerMinute, mood)
 
               const postureIssues = isRunning ? postureMetrics.postureIssues : []
-              const postureTrackable = isRunning && postureMetrics.trackable
+              const postureTrackable = postureMetrics.trackable
               const alertMessage = isRunning
                 ? buildAlert(distanceStatus, postureIssues, mood, blink.blinksPerMinute)
                 : null
@@ -332,6 +332,7 @@ export function useVisionLoop(
                 blinksPerMinute: blink.blinksPerMinute,
                 ear: blink.ear,
                 mood,
+                moodSignals,
                 faceRatio,
                 distanceStatus,
                 fatigueLevel,
@@ -408,6 +409,7 @@ export function useVisionLoop(
                 blinksPerMinute: 0,
                 ear: 0,
                 mood: 'unknown',
+                moodSignals: null,
                 faceRatio: 0,
                 distanceStatus: 'none',
                 fatigueLevel: 0,

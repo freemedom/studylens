@@ -1,5 +1,11 @@
 export type Mood = 'focused' | 'tired' | 'restless' | 'unknown'
 
+export interface MoodSignals {
+  headJitter: number
+  brow: number
+  mouth: number
+}
+
 export type DistanceStatus = 'good' | 'too_near' | 'too_far' | 'none'
 
 export type PostureIssue =

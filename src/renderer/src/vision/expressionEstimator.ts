@@ -1,6 +1,17 @@
 import type { Category } from '@mediapipe/tasks-vision'
-import { BLINK_RATE_LOW } from '../constants/thresholds'
-import type { Mood } from '../types/metrics'
+import {
+  BLINK_RATE_LOW,
+  BROW_RESTLESS,
+  EAR_TIRED,
+  HEAD_JITTER_RESTLESS,
+  MOUTH_FROWN_RESTLESS
+} from '../constants/thresholds'
+import type { Mood, MoodSignals } from '../types/metrics'
+
+export type MoodUpdateResult = {
+  mood: Mood
+  signals: MoodSignals | null
+}
 
 /** Read a single MediaPipe face blendshape score by category name (0 if missing). */
 function blendScore(blendshapes: Category[] | undefined, name: string): number {
@@ -63,8 +74,8 @@ export class ExpressionEstimator {
     blinksPerMinute: number,
     ear: number,
     now = Date.now()
-  ): Mood {
-    if (!nose) return 'unknown'
+  ): MoodUpdateResult {
+    if (!nose) return { mood: 'unknown', signals: null }
 
     // Append current nose tip; drop samples older than 2 s so jitter reflects recent behavior.
     this.headHistory.push({ x: nose.x, y: nose.y, t: now })
@@ -99,11 +110,15 @@ export class ExpressionEstimator {
     const mouth =
       blendScore(blendshapes, 'mouthFrownLeft') + blendScore(blendshapes, 'mouthFrownRight')
 
+    const signals: MoodSignals = { headJitter, brow, mouth }
+
     // Step 1 — fatigue: infrequent blinks or partially closed eyes.
-    if (blinksPerMinute < BLINK_RATE_LOW || ear < 0.19) return 'tired'
+    if (blinksPerMinute < BLINK_RATE_LOW || ear < EAR_TIRED) return { mood: 'tired', signals }
     // Step 2 — restlessness: large head motion or strained facial expression.
-    if (headJitter > 0.035 || brow > 1.2 || mouth > 0.8) return 'restless'
+    if (headJitter > HEAD_JITTER_RESTLESS || brow > BROW_RESTLESS || mouth > MOUTH_FROWN_RESTLESS) {
+      return { mood: 'restless', signals }
+    }
     // Step 3 — default attentive state when no fatigue or restlessness cues fire.
-    return 'focused'
+    return { mood: 'focused', signals }
   }
 }
