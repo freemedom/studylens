@@ -18,9 +18,13 @@ import {
 import { detectPose, initPoseLandmarker } from '../vision/poseLandmarker'
 import { requestCameraStream, VisionInitError } from '../utils/visionInitError'
 
-function computeFatigueLevel(blinksPerMinute: number, mood: Mood): number {
+function computeFatigueLevel(
+  blinksPerMinute: number,
+  mood: Mood,
+  blinkRateReady: boolean
+): number {
   let level = 0
-  if (blinksPerMinute < 10) level += 0.4
+  if (blinkRateReady && blinksPerMinute < 10) level += 0.4
   if (mood === 'tired') level += 0.4
   return Math.min(level, 1)
 }
@@ -29,13 +33,15 @@ function buildAlert(
   distanceStatus: DistanceStatus,
   postureIssues: ActivePostureIssue[],
   mood: Mood,
-  blinksPerMinute: number
+  blinksPerMinute: number,
+  blinkRateReady: boolean
 ): string | null {
   if (distanceStatus === 'too_near') return 'Move back from the screen — about an arm\'s length'
   if (distanceStatus === 'too_far') return 'Move closer to the camera or adjust your posture'
   const postureMsgs = postureAlertMessages(postureIssues)
   if (postureMsgs.length > 0) return postureMsgs.join('；')
-  if (mood === 'tired' || blinksPerMinute < 10) return 'Low blink rate — take a short break'
+  if (mood === 'tired' || (blinkRateReady && blinksPerMinute < 10))
+    return 'Low blink rate — take a short break'
   if (mood === 'restless') return 'Feeling restless — try a few deep breaths'
   return null
 }
@@ -254,14 +260,25 @@ export function useVisionLoop(
                 nose,
                 blink.blinksPerMinute,
                 blink.ear,
-                wallNow
+                wallNow,
+                blink.blinkRateReady
               )
-              const fatigueLevel = computeFatigueLevel(blink.blinksPerMinute, mood)
+              const fatigueLevel = computeFatigueLevel(
+                blink.blinksPerMinute,
+                mood,
+                blink.blinkRateReady
+              )
 
               const postureIssues = isRunning ? postureMetrics.postureIssues : []
               const postureTrackable = postureMetrics.trackable
               const alertMessage = isRunning
-                ? buildAlert(distanceStatus, postureIssues, mood, blink.blinksPerMinute)
+                ? buildAlert(
+                    distanceStatus,
+                    postureIssues,
+                    mood,
+                    blink.blinksPerMinute,
+                    blink.blinkRateReady
+                  )
                 : null
 
               let showPostureHint = false
@@ -312,6 +329,7 @@ export function useVisionLoop(
                 isRunning &&
                 fatigueLevel >= 0.6 &&
                 distanceStatus === 'too_near' &&
+                blink.blinkRateReady &&
                 blink.blinksPerMinute < 12
               ) {
                 if (!breakEndTime.current) {
@@ -330,6 +348,7 @@ export function useVisionLoop(
               updateMetrics({
                 blinkCount: blink.blinkCount,
                 blinksPerMinute: blink.blinksPerMinute,
+                blinkRateReady: blink.blinkRateReady,
                 ear: blink.ear,
                 mood,
                 moodSignals,
@@ -407,6 +426,7 @@ export function useVisionLoop(
               updateMetrics({
                 blinkCount: blinkDetector.current.getCount(),
                 blinksPerMinute: 0,
+                blinkRateReady: false,
                 ear: 0,
                 mood: 'unknown',
                 moodSignals: null,

@@ -3,7 +3,10 @@ import {
   BLINK_RATE_LOW,
   BROW_RESTLESS,
   EAR_TIRED,
+  EAR_TIRED_SUSTAIN_RATIO,
   HEAD_JITTER_RESTLESS,
+  MOOD_HOLD_MS,
+  MOOD_SMOOTH_MS,
   MOUTH_FROWN_RESTLESS
 } from '../constants/thresholds'
 import type { Mood, MoodSignals } from '../types/metrics'
@@ -58,10 +61,21 @@ function blendScore(blendshapes: Category[] | undefined, name: string): number {
 export class ExpressionEstimator {
   /** Recent nose positions used to measure head jitter over a sliding window. */
   private headHistory: { x: number; y: number; t: number }[] = []
+  private signalSamples: { ear: number; brow: number; mouth: number; headJitter: number; t: number }[] =
+    []
+  private currentMood: Mood = 'unknown'
+  private candidateMood: Mood | null = null
+  private candidateSince: number | null = null
+  private restlessSince: number | null = null
 
   /** Clear head-movement history when a new study session starts. */
   reset(): void {
     this.headHistory = []
+    this.signalSamples = []
+    this.currentMood = 'unknown'
+    this.candidateMood = null
+    this.candidateSince = null
+    this.restlessSince = null
   }
 
   /**
@@ -73,9 +87,16 @@ export class ExpressionEstimator {
     nose: { x: number; y: number } | undefined,
     blinksPerMinute: number,
     ear: number,
-    now = Date.now()
+    now = Date.now(),
+    blinkRateReady = true
   ): MoodUpdateResult {
-    if (!nose) return { mood: 'unknown', signals: null }
+    if (!nose) {
+      this.currentMood = 'unknown'
+      this.candidateMood = null
+      this.candidateSince = null
+      this.restlessSince = null
+      return { mood: 'unknown', signals: null }
+    }
 
     // Append current nose tip; drop samples older than 2 s so jitter reflects recent behavior.
     this.headHistory.push({ x: nose.x, y: nose.y, t: now })
@@ -102,23 +123,81 @@ export class ExpressionEstimator {
     // - browDownRight: right outer brow pulls downward (mirror of browDownLeft).
     // - browInnerUp:   inner brow corners raise (often seen with concentration or worry).
     // Summed score > 1.2 suggests strained or restless expression → mood 'restless'.
-    const brow =
-      blendScore(blendshapes, 'browDownLeft') +
-      blendScore(blendshapes, 'browDownRight') +
-      blendScore(blendshapes, 'browInnerUp')
+    const browDown =
+      blendScore(blendshapes, 'browDownLeft') + blendScore(blendshapes, 'browDownRight')
+    // Restless classification uses outer-brow downturn only; browInnerUp is excluded to
+    // avoid mislabeling focused concentration as restless.
+    const brow = browDown
     // Left + right mouth-corner downturn (MediaPipe ARKit blendshapes); not a smile metric.
     const mouth =
       blendScore(blendshapes, 'mouthFrownLeft') + blendScore(blendshapes, 'mouthFrownRight')
 
-    const signals: MoodSignals = { headJitter, brow, mouth }
+    this.signalSamples.push({ ear, brow, mouth, headJitter, t: now })
+    this.signalSamples = this.signalSamples.filter((s) => now - s.t <= MOOD_SMOOTH_MS)
+
+    const n = this.signalSamples.length
+    const smoothedBrow = n > 0 ? this.signalSamples.reduce((sum, s) => sum + s.brow, 0) / n : brow
+    const smoothedMouth =
+      n > 0 ? this.signalSamples.reduce((sum, s) => sum + s.mouth, 0) / n : mouth
+    const smoothedJitter =
+      n > 0 ? this.signalSamples.reduce((sum, s) => sum + s.headJitter, 0) / n : headJitter
+    const lowEarRatio =
+      n > 0
+        ? this.signalSamples.filter((s) => s.ear < EAR_TIRED).length / n
+        : ear < EAR_TIRED
+          ? 1
+          : 0
+
+    const signals: MoodSignals = {
+      headJitter: smoothedJitter,
+      brow: smoothedBrow,
+      mouth: smoothedMouth
+    }
 
     // Step 1 — fatigue: infrequent blinks or partially closed eyes.
-    if (blinksPerMinute < BLINK_RATE_LOW || ear < EAR_TIRED) return { mood: 'tired', signals }
+    const tiredFromBlinks = blinkRateReady && blinksPerMinute < BLINK_RATE_LOW
+    const tiredFromEar = lowEarRatio >= EAR_TIRED_SUSTAIN_RATIO
+    const rawTired = tiredFromBlinks || tiredFromEar
+
     // Step 2 — restlessness: large head motion or strained facial expression.
-    if (headJitter > HEAD_JITTER_RESTLESS || brow > BROW_RESTLESS || mouth > MOUTH_FROWN_RESTLESS) {
-      return { mood: 'restless', signals }
+    const restlessNow =
+      smoothedJitter > HEAD_JITTER_RESTLESS ||
+      smoothedBrow > BROW_RESTLESS ||
+      smoothedMouth > MOUTH_FROWN_RESTLESS
+    if (restlessNow) {
+      if (!this.restlessSince) this.restlessSince = now
+    } else {
+      this.restlessSince = null
     }
+    const rawRestless =
+      !rawTired &&
+      restlessNow &&
+      this.restlessSince !== null &&
+      now - this.restlessSince >= MOOD_HOLD_MS
+
+    const rawMood: Mood = rawTired ? 'tired' : rawRestless ? 'restless' : 'focused'
+
     // Step 3 — default attentive state when no fatigue or restlessness cues fire.
-    return { mood: 'focused', signals }
+    // Debounce mood label changes so single-frame spikes do not flicker the UI.
+    let mood = this.currentMood
+    if (rawMood === mood) {
+      this.candidateMood = null
+      this.candidateSince = null
+    } else if (this.candidateMood !== rawMood) {
+      this.candidateMood = rawMood
+      this.candidateSince = now
+    } else if (this.candidateSince !== null && now - this.candidateSince >= MOOD_HOLD_MS) {
+      mood = rawMood
+      this.currentMood = rawMood
+      this.candidateMood = null
+      this.candidateSince = null
+    }
+
+    if (mood === 'unknown') {
+      mood = rawMood
+      this.currentMood = rawMood
+    }
+
+    return { mood, signals }
   }
 }

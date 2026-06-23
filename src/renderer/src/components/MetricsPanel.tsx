@@ -3,6 +3,7 @@ import {
   BROW_RESTLESS,
   EAR_TIRED,
   HEAD_JITTER_RESTLESS,
+  MOOD_BLINK_WARMUP_MS,
   MOUTH_FROWN_RESTLESS
 } from '../constants/thresholds'
 import type { ActivePostureIssue, DistanceStatus, Mood } from '../types/metrics'
@@ -52,6 +53,7 @@ export default function MetricsPanel(): React.JSX.Element {
   const ear = useSessionStore((s) => s.ear)
   const mood = useSessionStore((s) => s.mood)
   const moodSignals = useSessionStore((s) => s.moodSignals)
+  const blinkRateReady = useSessionStore((s) => s.blinkRateReady)
   const faceRatio = useSessionStore((s) => s.faceRatio)
   const distanceStatus = useSessionStore((s) => s.distanceStatus)
   const fatigueLevel = useSessionStore((s) => s.fatigueLevel)
@@ -177,6 +179,14 @@ export default function MetricsPanel(): React.JSX.Element {
             <div className="metric-label">EAR (eye aspect ratio)</div>
             <div className="metric-value small">{moodSignals ? ear.toFixed(3) : '—'}</div>
             <div className="metric-hint">Tired if &lt; {EAR_TIRED}</div>
+          </div>
+
+          <div className="metric-card">
+            <div className="metric-label">Blink rate ready</div>
+            <div className="metric-value small">{blinkRateReady ? 'Ready' : 'Stabilizing…'}</div>
+            <div className="metric-hint">
+              Ready after {MOOD_BLINK_WARMUP_MS / 1000}s of observation
+            </div>
           </div>
 
           <div className="metrics-section-title">Mood signals</div>

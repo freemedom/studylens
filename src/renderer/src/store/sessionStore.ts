@@ -17,6 +17,7 @@ interface SessionState {
   showMesh: boolean
   blinkCount: number
   blinksPerMinute: number
+  blinkRateReady: boolean
   ear: number
   mood: Mood
   moodSignals: MoodSignals | null
@@ -54,6 +55,7 @@ interface SessionState {
   updateMetrics: (metrics: {
     blinkCount: number
     blinksPerMinute: number
+    blinkRateReady: boolean
     ear: number
     mood: Mood
     moodSignals: MoodSignals | null
@@ -98,6 +100,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   showMesh: true,
   blinkCount: 0,
   blinksPerMinute: 0,
+  blinkRateReady: false,
   ear: 0,
   mood: 'unknown',
   moodSignals: null,
@@ -139,6 +142,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       postureAlerts: 0,
       blinkCount: 0,
       blinksPerMinute: 0,
+      blinkRateReady: false,
       mood: 'unknown',
       moodSignals: null,
       distanceAlerts: 0,
