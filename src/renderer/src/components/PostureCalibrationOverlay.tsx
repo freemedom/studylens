@@ -12,14 +12,14 @@ export default function PostureCalibrationOverlay(): React.JSX.Element | null {
     return (
       <div className="break-overlay calibration-overlay">
         <div className="break-card calibration-card">
-          <h2>坐姿校准</h2>
-          <p>请坐直，双肩放松，面向屏幕，确保双肩在画面中</p>
-          <p className="break-hint">调整好后点击下方按钮开始记录你的健康坐姿基准</p>
+          <h2>Posture calibration</h2>
+          <p>Sit upright, relax your shoulders, face the screen, and keep both shoulders in view</p>
+          <p className="break-hint">When ready, tap below to record your healthy posture baseline</p>
           <button type="button" className="btn-primary" onClick={beginCalibrationRecording}>
-            我已坐好，开始校准
+            I&apos;m ready — start calibration
           </button>
           <button type="button" className="btn-secondary calibration-cancel" onClick={cancelCalibration}>
-            取消
+            Cancel
           </button>
         </div>
       </div>
@@ -29,12 +29,12 @@ export default function PostureCalibrationOverlay(): React.JSX.Element | null {
   return (
     <div className="break-overlay calibration-overlay">
       <div className="break-card calibration-card">
-        <h2>坐姿校准</h2>
-        <p>请坐直，双肩放松，面向屏幕，确保双肩在画面中</p>
+        <h2>Posture calibration</h2>
+        <p>Sit upright, relax your shoulders, face the screen, and keep both shoulders in view</p>
         <div className="break-timer">{calibrationSecondsLeft}</div>
-        <p className="break-hint">保持当前姿势，正在记录你的健康坐姿基准</p>
+        <p className="break-hint">Hold this pose — recording your healthy posture baseline</p>
         <button type="button" className="btn-secondary calibration-cancel" onClick={cancelCalibration}>
-          取消
+          Cancel
         </button>
       </div>
     </div>

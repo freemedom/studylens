@@ -169,7 +169,7 @@ export async function createSyncGroup(
   rules: ContextRule[]
 ): Promise<{ token: string } | { error: string }> {
   const supabase = getSupabase()
-  if (!supabase) return { error: 'Supabase 未配置' }
+  if (!supabase) return { error: 'Supabase not configured' }
   const token = createSyncToken()
   const updatedAt = bumpLocalUpdatedAt()
   const { error } = await supabase.from(TABLE).upsert({
@@ -187,16 +187,16 @@ export async function joinSyncGroup(
   token: string
 ): Promise<{ ok: true } | { error: string }> {
   const trimmed = token.trim()
-  if (!trimmed) return { error: '请输入同步码' }
+  if (!trimmed) return { error: 'Please enter a sync code' }
   const supabase = getSupabase()
-  if (!supabase) return { error: 'Supabase 未配置' }
+  if (!supabase) return { error: 'Supabase not configured' }
   try {
     const remote = await fetchRemoteRow(trimmed)
-    if (!remote) return { error: '同步码无效或不存在' }
+    if (!remote) return { error: 'Invalid or missing sync code' }
     saveSyncToken(trimmed)
     return { ok: true }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : '加入同步失败' }
+    return { error: err instanceof Error ? err.message : 'Failed to join sync' }
   }
 }
 
@@ -204,18 +204,18 @@ export async function pullRules(): Promise<SyncApplyResult> {
   const token = getSyncToken()
   if (!token) return { action: 'noop' }
   const supabase = getSupabase()
-  if (!supabase) return { action: 'error', message: 'Supabase 未配置' }
+  if (!supabase) return { action: 'error', message: 'Supabase not configured' }
   try {
     const remote = await fetchRemoteRow(token)
-    if (!remote) return { action: 'error', message: '云端同步组不存在' }
+    if (!remote) return { action: 'error', message: 'Sync group not found in cloud' }
     const localUpdatedAt = getLocalUpdatedAt()
     if (remote.updated_at <= localUpdatedAt) return { action: 'noop' }
     const rules = parseContextRules(remote.rules)
-    if (!rules) return { action: 'error', message: '云端规则格式无效' }
+    if (!rules) return { action: 'error', message: 'Invalid cloud rules format' }
     setLocalUpdatedAt(remote.updated_at)
     return { action: 'pulled', rules, updatedAt: remote.updated_at }
   } catch (err) {
-    return { action: 'error', message: err instanceof Error ? err.message : '拉取失败' }
+    return { action: 'error', message: err instanceof Error ? err.message : 'Pull failed' }
   }
 }
 
@@ -223,7 +223,7 @@ export async function pushRules(rules: ContextRule[]): Promise<SyncApplyResult> 
   const token = getSyncToken()
   if (!token) return { action: 'noop' }
   const supabase = getSupabase()
-  if (!supabase) return { action: 'error', message: 'Supabase 未配置' }
+  if (!supabase) return { action: 'error', message: 'Supabase not configured' }
   try {
     const remote = await fetchRemoteRow(token)
     const localUpdatedAt = getLocalUpdatedAt()
@@ -243,7 +243,7 @@ export async function pushRules(rules: ContextRule[]): Promise<SyncApplyResult> 
     if (error) return { action: 'error', message: error.message }
     return { action: 'pushed', updatedAt }
   } catch (err) {
-    return { action: 'error', message: err instanceof Error ? err.message : '推送失败' }
+    return { action: 'error', message: err instanceof Error ? err.message : 'Push failed' }
   }
 }
 
@@ -261,12 +261,12 @@ export async function pullPeerModes(): Promise<
   if (!token) return { peerModes: {} }
   try {
     const remote = await fetchRemoteRow(token)
-    if (!remote) return { error: '云端同步组不存在' }
+    if (!remote) return { error: 'Sync group not found in cloud' }
     const peerModes = parsePeerModes(remote.peer_modes)
-    if (!peerModes) return { error: '云端模式格式无效' }
+    if (!peerModes) return { error: 'Invalid cloud mode format' }
     return { peerModes }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : '拉取模式失败' }
+    return { error: err instanceof Error ? err.message : 'Failed to pull modes' }
   }
 }
 
@@ -278,10 +278,10 @@ export async function pushPeerMode(
   const token = getSyncToken()
   if (!token) return { peerModes: existingPeerModes }
   const supabase = getSupabase()
-  if (!supabase) return { error: 'Supabase 未配置' }
+  if (!supabase) return { error: 'Supabase not configured' }
   try {
     const remote = await fetchRemoteRow(token)
-    if (!remote) return { error: '云端同步组不存在' }
+    if (!remote) return { error: 'Sync group not found in cloud' }
     const remotePeerModes = parsePeerModes(remote.peer_modes) ?? {}
     const nextPeerModes = {
       ...remotePeerModes,
@@ -294,6 +294,6 @@ export async function pushPeerMode(
     if (error) return { error: error.message }
     return { peerModes: nextPeerModes }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : '推送模式失败' }
+    return { error: err instanceof Error ? err.message : 'Failed to push modes' }
   }
 }

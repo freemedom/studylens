@@ -19,7 +19,7 @@ function App(): React.JSX.Element {
         <div>
           <h1>StudyLens</h1>
           <p className="subtitle">
-            摄像头学习助手 — 眨眼 · 疲劳 · 距离 · 坐姿
+            Study assistant — mood · fatigue · distance · posture · context
             <ModeBadge />
           </p>
         </div>

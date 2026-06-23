@@ -9,10 +9,10 @@ export default function ModeBadge(): React.JSX.Element {
     contextSource === 'wifi'
       ? 'WiFi'
       : contextSource === 'location'
-        ? '定位'
+        ? 'Location'
         : contextSource === 'manual'
-          ? '手动'
-          : '默认'
+          ? 'Manual'
+          : 'Default'
 
   return (
     <span className={`mode-badge mode-badge-${activeMode}`}>

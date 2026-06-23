@@ -31,12 +31,12 @@ function buildAlert(
   mood: Mood,
   blinksPerMinute: number
 ): string | null {
-  if (distanceStatus === 'too_near') return '请远离屏幕，保持一臂距离'
-  if (distanceStatus === 'too_far') return '请靠近摄像头或调整坐姿'
+  if (distanceStatus === 'too_near') return 'Move back from the screen — about an arm\'s length'
+  if (distanceStatus === 'too_far') return 'Move closer to the camera or adjust your posture'
   const postureMsgs = postureAlertMessages(postureIssues)
   if (postureMsgs.length > 0) return postureMsgs.join('；')
-  if (mood === 'tired' || blinksPerMinute < 10) return '眨眼偏少，注意休息'
-  if (mood === 'restless') return '状态烦躁，试试深呼吸'
+  if (mood === 'tired' || blinksPerMinute < 10) return 'Low blink rate — take a short break'
+  if (mood === 'restless') return 'Feeling restless — try a few deep breaths'
   return null
 }
 
@@ -411,7 +411,7 @@ export function useVisionLoop(
                 faceRatio: 0,
                 distanceStatus: 'none',
                 fatigueLevel: 0,
-                alertMessage: calibrating ? null : '未检测到人脸',
+                alertMessage: calibrating ? null : 'No face detected',
                 showBreak: false,
                 breakSecondsLeft: 0,
                 postureIssues: [],

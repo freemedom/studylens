@@ -13,7 +13,7 @@ export default function SessionControls(): React.JSX.Element {
     <div className="session-controls">
       {!isRunning && !inCalibrationFlow ? (
         <button type="button" className="btn-primary" disabled={!isReady} onClick={startCalibration}>
-          开始学习会话
+          Start session
         </button>
       ) : (
         <button
@@ -22,7 +22,7 @@ export default function SessionControls(): React.JSX.Element {
           disabled={calibrationPhase === 'running'}
           onClick={stopSession}
         >
-          结束会话
+          End session
         </button>
       )}
     </div>

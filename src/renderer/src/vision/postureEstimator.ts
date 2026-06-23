@@ -216,11 +216,11 @@ export function estimatePosture(
 export function postureAlertMessage(issue: ActivePostureIssue): string {
   switch (issue) {
     case 'forward_head':
-      return '请收回下巴，挺直颈椎'
+      return 'Tuck your chin in and straighten your neck'
     case 'head_tilt':
-      return '头部保持正直，不要歪头'
+      return 'Keep your head level — avoid tilting'
     case 'shoulder_uneven':
-      return '放松肩膀，保持双肩水平'
+      return 'Relax your shoulders and keep them level'
   }
 }
 

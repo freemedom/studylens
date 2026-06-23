@@ -15,15 +15,15 @@ export default function CameraPreview(): React.JSX.Element {
   return (
     <div className="camera-preview">
       <div className="camera-header">
-        <span>摄像头</span>
+        <span>Camera</span>
         <button type="button" className="btn-ghost" onClick={toggleMesh}>
-          {showMesh ? '隐藏网格' : '显示网格'}
+          {showMesh ? 'Hide mesh' : 'Show mesh'}
         </button>
       </div>
       <div className="camera-frame">
         <video ref={videoRef} className="camera-video" muted playsInline />
         <canvas ref={canvasRef} className="camera-overlay" />
-        {!isReady && !error && <div className="camera-loading">正在加载模型与摄像头…</div>}
+        {!isReady && !error && <div className="camera-loading">Loading models and camera…</div>}
         {error && <div className="camera-error">{error}</div>}
       </div>
     </div>

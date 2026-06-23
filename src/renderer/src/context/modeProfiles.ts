@@ -1,9 +1,9 @@
 import type { StudyMode } from '../types/context'
 
 const MODE_LABELS: Record<StudyMode, string> = {
-  strict: '严格',
-  study: '学习',
-  relax: '休闲'
+  strict: 'Strict',
+  study: 'Study',
+  relax: 'Relax'
 }
 
 export interface ModeProfile {

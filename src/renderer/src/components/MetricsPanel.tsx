@@ -2,10 +2,10 @@ import { useSessionStore } from '../store/sessionStore'
 import type { ActivePostureIssue, DistanceStatus, Mood } from '../types/metrics'
 
 const MOOD_LABELS: Record<Mood, string> = {
-  focused: '专注',
-  tired: '疲劳',
-  restless: '烦躁',
-  unknown: '未知'
+  focused: 'Focused',
+  tired: 'Tired',
+  restless: 'Restless',
+  unknown: 'Unknown'
 }
 
 const MOOD_CLASS: Record<Mood, string> = {
@@ -16,16 +16,16 @@ const MOOD_CLASS: Record<Mood, string> = {
 }
 
 const DISTANCE_LABELS: Record<DistanceStatus, string> = {
-  good: '距离合适',
-  too_near: '太近',
-  too_far: '太远',
+  good: 'Good distance',
+  too_near: 'Too close',
+  too_far: 'Too far',
   none: '—'
 }
 
 const POSTURE_LABELS: Record<ActivePostureIssue, string> = {
-  forward_head: '颈椎前倾',
-  head_tilt: '头部歪斜',
-  shoulder_uneven: '高低肩'
+  forward_head: 'Forward head',
+  head_tilt: 'Head tilt',
+  shoulder_uneven: 'Uneven shoulders'
 }
 
 const POSTURE_CLASS: Record<ActivePostureIssue, string> = {
@@ -62,23 +62,23 @@ export default function MetricsPanel(): React.JSX.Element {
   return (
     <div className="metrics-panel">
       <div className="metric-card">
-        <div className="metric-label">眨眼总数</div>
+        <div className="metric-label">Total blinks</div>
         <div className="metric-value">{blinkCount}</div>
       </div>
       <div className="metric-card">
-        <div className="metric-label">最近 1 分钟眨眼</div>
+        <div className="metric-label">Blinks (last minute)</div>
         <div className="metric-value">{blinksPerMinute}</div>
       </div>
       <div className="metric-card">
-        <div className="metric-label">EAR（眼裂比）</div>
+        <div className="metric-label">EAR (eye aspect ratio)</div>
         <div className="metric-value small">{ear.toFixed(3)}</div>
       </div>
       <div className="metric-card">
-        <div className="metric-label">状态</div>
+        <div className="metric-label">Mood</div>
         <div className={`metric-badge ${MOOD_CLASS[mood]}`}>{MOOD_LABELS[mood]}</div>
       </div>
       <div className="metric-card">
-        <div className="metric-label">屏幕距离</div>
+        <div className="metric-label">Screen distance</div>
         <div className="metric-value small">{DISTANCE_LABELS[distanceStatus]}</div>
         <div className="distance-bar">
           <div
@@ -88,12 +88,12 @@ export default function MetricsPanel(): React.JSX.Element {
         </div>
       </div>
       <div className="metric-card">
-        <div className="metric-label">坐姿状态</div>
+        <div className="metric-label">Posture</div>
         <div className="posture-badges">
           {!isRunning || !postureTrackable ? (
-            <div className="metric-badge posture-unknown">未检测</div>
+            <div className="metric-badge posture-unknown">Not detected</div>
           ) : postureIssues.length === 0 ? (
-            <div className="metric-badge posture-good">坐姿良好</div>
+            <div className="metric-badge posture-good">Good posture</div>
           ) : (
             postureIssues.map((issue) => (
               <div key={issue} className={`metric-badge ${POSTURE_CLASS[issue]}`}>
@@ -104,31 +104,31 @@ export default function MetricsPanel(): React.JSX.Element {
         </div>
       </div>
       <div className="metric-card">
-        <div className="metric-label">垂直偏移 / 歪头偏移</div>
+        <div className="metric-label">Forward / head tilt offset</div>
         <div className="metric-value small">
           {forwardRatio.toFixed(3)} / {headOffsetRatio.toFixed(3)}
         </div>
         {postureBaseline && (
           <div className="metric-hint">
-            基准 {postureBaseline.forwardRatio.toFixed(3)} /{' '}
+            Baseline {postureBaseline.forwardRatio.toFixed(3)} /{' '}
             {postureBaseline.headOffsetRatio.toFixed(3)}
           </div>
         )}
       </div>
       <div className="metric-card">
-        <div className="metric-label">颈角 / 肩倾</div>
+        <div className="metric-label">Neck angle / shoulder tilt</div>
         <div className="metric-value small">
           {neckAngleDeg.toFixed(1)}° / {shoulderTiltDeg.toFixed(1)}°
         </div>
         {postureBaseline && (
           <div className="metric-hint">
-            基准 {postureBaseline.neckAngleDeg.toFixed(1)}° /{' '}
+            Baseline {postureBaseline.neckAngleDeg.toFixed(1)}° /{' '}
             {postureBaseline.shoulderTiltDeg.toFixed(1)}°
           </div>
         )}
       </div>
       <div className="metric-card">
-        <div className="metric-label">姿势偏差</div>
+        <div className="metric-label">Posture deviation</div>
         <div className="fatigue-bar">
           <div
             className="posture-fill"
@@ -137,7 +137,7 @@ export default function MetricsPanel(): React.JSX.Element {
         </div>
       </div>
       <div className="metric-card">
-        <div className="metric-label">疲劳指数</div>
+        <div className="metric-label">Fatigue level</div>
         <div className="fatigue-bar">
           <div className="fatigue-fill" style={{ width: `${fatigueLevel * 100}%` }} />
         </div>
@@ -147,19 +147,19 @@ export default function MetricsPanel(): React.JSX.Element {
       )}
       {isRunning && (
         <div className="session-stats">
-          <span>距离提醒：{distanceAlerts}</span>
-          <span>疲劳事件：{tiredSamples}</span>
-          <span>坐姿提醒：{postureAlerts}</span>
+          <span>Distance alerts: {distanceAlerts}</span>
+          <span>Fatigue events: {tiredSamples}</span>
+          <span>Posture alerts: {postureAlerts}</span>
         </div>
       )}
       {history.length > 0 && (
         <div className="history">
-          <h3>最近会话</h3>
+          <h3>Recent sessions</h3>
           <ul>
             {history.slice(0, 3).map((s) => (
               <li key={s.id}>
-                {new Date(s.startedAt).toLocaleString()} — 眨眼 {s.blinkCount}，疲劳{' '}
-                {s.tiredSamples} 次，坐姿 {s.postureAlerts ?? 0} 次
+                {new Date(s.startedAt).toLocaleString()} — {s.blinkCount} blinks, {s.tiredSamples}{' '}
+                fatigue, {s.postureAlerts ?? 0} posture
               </li>
             ))}
           </ul>

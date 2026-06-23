@@ -5,8 +5,8 @@ import MetricsPanel from './MetricsPanel'
 type SidePanelTab = 'metrics' | 'context'
 
 const TABS: { id: SidePanelTab; label: string }[] = [
-  { id: 'metrics', label: '实时指标' },
-  { id: 'context', label: '情境模式' }
+  { id: 'metrics', label: 'Live metrics' },
+  { id: 'context', label: 'Context modes' }
 ]
 
 export default function SidePanelTabs(): React.JSX.Element {
@@ -14,7 +14,7 @@ export default function SidePanelTabs(): React.JSX.Element {
 
   return (
     <div className="side-panel-tabs">
-      <div className="side-panel-tab-bar" role="tablist" aria-label="侧栏面板">
+      <div className="side-panel-tab-bar" role="tablist" aria-label="Side panel">
         {TABS.map((tab) => (
           <button
             key={tab.id}

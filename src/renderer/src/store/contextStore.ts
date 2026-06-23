@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { matchAutoContextRule } from '../context/matchRule'
+import { SYNC_CONFLICT_NOTICE } from '../context/contextCopy'
 import { pickStrictestMode } from '../context/modeProfiles'
 import { isStrictRuleDeleteLocked } from '../context/ruleDeleteLock'
 import {
@@ -246,9 +247,9 @@ function applySyncResult(
   if (result.action === 'conflict') {
     void pullRules().then((pullResult) => {
       if (pullResult.action === 'pulled') {
-        applyPulledRules(set, pullResult.rules, 'conflict', '同步冲突，已采用较新版本')
+        applyPulledRules(set, pullResult.rules, 'conflict', SYNC_CONFLICT_NOTICE)
       } else {
-        set({ syncStatus: 'conflict', syncError: '同步冲突，已采用较新版本' })
+        set({ syncStatus: 'conflict', syncError: SYNC_CONFLICT_NOTICE })
       }
     })
     return

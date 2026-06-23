@@ -33,7 +33,7 @@ function ruleSummary(rule: ContextRule): string {
   if (rule.kind === 'wifi') {
     return `WiFi: ${rule.ssid} → ${getModeLabel(rule.mode)}`
   }
-  return `定位: ${rule.lat.toFixed(4)}, ${rule.lng.toFixed(4)} (${rule.radiusM}m) → ${getModeLabel(rule.mode)}`
+  return `Location: ${rule.lat.toFixed(4)}, ${rule.lng.toFixed(4)} (${rule.radiusM}m) → ${getModeLabel(rule.mode)}`
 }
 
 export default function ContextModePanel(): React.JSX.Element {
@@ -62,7 +62,7 @@ export default function ContextModePanel(): React.JSX.Element {
   const [syncNotice, setSyncNotice] = useState<string | null>(null)
 
   // Local form state for "add rule" / manual-lock controls (not the global `activeMode`).
-  // Defaults pre-select sensible modes before the user clicks "添加规则" or "锁定".
+  // Defaults pre-select sensible modes before the user clicks "Add rule" or "Lock".
   /**
    * React useState — component-local state that survives re-renders.
    *
@@ -117,37 +117,37 @@ export default function ContextModePanel(): React.JSX.Element {
 
   const sourceText =
     contextSource === 'wifi' && matchedRule?.kind === 'wifi'
-      ? `WiFi「${matchedRule.ssid}」`
+      ? `WiFi "${matchedRule.ssid}"`
       : contextSource === 'location' && matchedRule?.kind === 'location'
-        ? `定位半径 ${matchedRule.radiusM}m`
+        ? `Location radius ${matchedRule.radiusM}m`
         : contextSource === 'sync'
           ? CONTEXT_SOURCE_SYNC
           : contextSource === 'manual'
-            ? '手动锁定'
-            : '默认（无匹配规则）'
+            ? 'Manual lock'
+            : 'Default (no matching rules)'
 
   return (
     <div className="context-mode-panel">
       <div className="metric-card">
-        <div className="metric-label">当前模式</div>
+        <div className="metric-label">Current mode</div>
         <div className={`metric-badge mode-badge mode-badge-${activeMode}`}>
           {getModeLabel(activeMode)}
         </div>
-        <div className="metric-hint">来源：{sourceText}</div>
+        <div className="metric-hint">Source: {sourceText}</div>
       </div>
 
       <div className="metric-card context-status-card">
-        <div className="metric-label">当前情境</div>
+        <div className="metric-label">Current context</div>
         <div className="context-status-row">
           <span>WiFi</span>
-          <span>{currentWifi ?? '未检测到 WiFi'}</span>
+          <span>{currentWifi ?? 'No WiFi detected'}</span>
         </div>
         <div className="context-status-row">
-          <span>定位</span>
+          <span>Location</span>
           <span>
             {currentLocation
               ? `${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)}`
-              : locationError ?? '暂无坐标'}
+              : locationError ?? 'No coordinates'}
           </span>
         </div>
         {currentLocation && (
@@ -157,13 +157,13 @@ export default function ContextModePanel(): React.JSX.Element {
             target="_blank"
             rel="noreferrer"
           >
-            在地图中查看当前位置
+            View on map
           </a>
         )}
       </div>
 
       <div className="context-action-card">
-        <div className="context-action-title">绑定当前 WiFi</div>
+        <div className="context-action-title">Bind current WiFi</div>
         <div className="context-action-row">
           <select
             className="context-select"
@@ -186,13 +186,13 @@ export default function ContextModePanel(): React.JSX.Element {
               notifyIfStrictRule(wifiMode)
             }}
           >
-            添加规则
+            Add rule
           </button>
         </div>
       </div>
 
       <div className="context-action-card">
-        <div className="context-action-title">绑定当前位置</div>
+        <div className="context-action-title">Bind current location</div>
         <div className="context-action-row">
           <span className="context-field-label">{LOCATION_RADIUS_LABEL}</span>
           <input
@@ -231,7 +231,7 @@ export default function ContextModePanel(): React.JSX.Element {
               notifyIfStrictRule(locationMode)
             }}
           >
-            添加规则
+            Add rule
           </button>
         </div>
       </div>
@@ -250,7 +250,7 @@ export default function ContextModePanel(): React.JSX.Element {
               <span>{SYNC_LAST_SYNCED}</span>
               <span>{formatSyncTime(lastSyncedAt)}</span>
             </div>
-            {syncStatus === 'syncing' && <p className="metric-hint">同步中…</p>}
+            {syncStatus === 'syncing' && <p className="metric-hint">Syncing…</p>}
             {(syncError || syncNotice) && (
               <p className="metric-hint context-sync-error">{syncNotice ?? syncError}</p>
             )}
@@ -309,7 +309,7 @@ export default function ContextModePanel(): React.JSX.Element {
 
       {rules.length > 0 && (
         <div className="context-rules">
-          <h3>已保存规则</h3>
+          <h3>Saved rules</h3>
           {strictCreateNotice && (
             <p className="metric-hint">{STRICT_RULE_DELETE_NOTICE}</p>
           )}
@@ -323,7 +323,7 @@ export default function ContextModePanel(): React.JSX.Element {
                   disabled={isStrictRuleDeleteLocked(rule, now)}
                   onClick={() => removeRule(rule.id)}
                 >
-                  删除
+                  Delete
                 </button>
               </li>
             ))}
@@ -332,7 +332,7 @@ export default function ContextModePanel(): React.JSX.Element {
       )}
 
       <div className="context-action-card">
-        <div className="context-action-title">手动模式</div>
+        <div className="context-action-title">Manual mode</div>
         <div className="context-action-row">
           <select
             className="context-select"
@@ -346,7 +346,7 @@ export default function ContextModePanel(): React.JSX.Element {
             ))}
           </select>
           <button type="button" className="btn-ghost" onClick={() => setManualMode(manualSelection)}>
-            锁定
+            Lock
           </button>
           <button
             type="button"
@@ -354,11 +354,11 @@ export default function ContextModePanel(): React.JSX.Element {
             disabled={manualMode === null}
             onClick={() => setManualMode(null)}
           >
-            恢复自动
+            Auto
           </button>
         </div>
         {manualMode && (
-          <div className="metric-hint">已手动锁定为「{getModeLabel(manualMode)}」</div>
+          <div className="metric-hint">Manually locked to &quot;{getModeLabel(manualMode)}&quot;</div>
         )}
       </div>
     </div>

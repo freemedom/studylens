@@ -26,10 +26,10 @@ export default function BreakOverlay(): React.JSX.Element | null {
   return (
     <div className="break-overlay">
       <div className="break-card">
-        <h2>休息一下眼睛</h2>
-        <p>请看向 6 米外，放松 20 秒（20-20-20 法则）</p>
+        <h2>Rest your eyes</h2>
+        <p>Look about 6 meters away and relax for 20 seconds (20-20-20 rule)</p>
         <div className="break-timer">{breakSecondsLeft}</div>
-        <p className="break-hint">按空格键可提前关闭</p>
+        <p className="break-hint">Press Space to dismiss early</p>
       </div>
     </div>
   )

@@ -8,19 +8,19 @@ type GeolocationReadResult =
   | { ok: false; message: string }
 
 function geolocationErrorMessage(code: number, platform: NodeJS.Platform): string {
-  if (code === 1) return '定位权限被拒绝（请在系统设置中允许位置访问）'
-  if (code === 3) return '定位请求超时'
+  if (code === 1) return 'Location permission denied — allow location access in system settings'
+  if (code === 3) return 'Location request timed out'
   if (code === 2 && platform === 'win32') {
-    return 'Windows 定位失败：请设置环境变量 GOOGLE_API_KEY（Google Geolocation API），或仅使用 WiFi 规则'
+    return 'Windows location failed — set GOOGLE_API_KEY (Google Geolocation API), or use WiFi rules only'
   }
-  if (code === 2) return '定位服务不可用'
-  return '定位不可用或未授权'
+  if (code === 2) return 'Location services unavailable'
+  return 'Location unavailable or not authorized'
 }
 
 function readGeolocation(platform: NodeJS.Platform): Promise<GeolocationReadResult> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
-      resolve({ ok: false, message: '浏览器不支持定位' })
+      resolve({ ok: false, message: 'Geolocation not supported in this browser' })
       return
     }
 
@@ -70,7 +70,7 @@ export function useContextDetector(): void {
         if (!cancelled) {
           setCurrentLocation(
             null,
-            'Windows 定位需 GOOGLE_API_KEY（见 README）；当前仅可用 WiFi / 手动模式'
+            'Windows location requires GOOGLE_API_KEY (see README); WiFi / manual mode only for now'
           )
         }
       } else {

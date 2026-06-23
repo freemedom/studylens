@@ -155,8 +155,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       isRunning: true,
       sessionStart: Date.now(),
       calibrationMessage: usedFallback
-        ? '校准样本不足，已使用默认坐姿基准'
-        : '坐姿校准完成'
+        ? 'Not enough calibration samples — using default posture baseline'
+        : 'Posture calibration complete'
     }),
 
   cancelCalibration: () =>

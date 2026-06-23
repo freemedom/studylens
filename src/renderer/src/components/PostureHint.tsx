@@ -2,9 +2,9 @@ import { useSessionStore } from '../store/sessionStore'
 import type { ActivePostureIssue } from '../types/metrics'
 
 const HINT_TEXT: Record<ActivePostureIssue, string> = {
-  forward_head: '收回下巴，让耳朵与肩线对齐',
-  head_tilt: '头部摆正，目视屏幕中央',
-  shoulder_uneven: '双肩下沉，保持水平'
+  forward_head: 'Tuck your chin — align ears with shoulders',
+  head_tilt: 'Level your head and look at the center of the screen',
+  shoulder_uneven: 'Drop both shoulders and keep them level'
 }
 
 export default function PostureHint(): React.JSX.Element | null {
@@ -17,7 +17,7 @@ export default function PostureHint(): React.JSX.Element | null {
 
   return (
     <div className="posture-hint posture-hint-multi">
-      <div className="posture-hint-title">姿势提醒</div>
+      <div className="posture-hint-title">Posture reminder</div>
       {postureIssues.map((issue) => (
         <div key={issue} className={`posture-hint-text posture-hint-${issue}`}>
           {HINT_TEXT[issue]}
