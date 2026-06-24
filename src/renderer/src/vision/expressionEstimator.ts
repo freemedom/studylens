@@ -229,16 +229,17 @@ export class ExpressionEstimator {
           ? 1
           : 0
 
-    // Step 1 — fatigue: infrequent blinks, partially closed eyes, or sustained yawn (jaw open).
-    const tiredFromBlinks = blinkRateReady && blinksPerMinute < BLINK_RATE_LOW
-    const tiredFromEar = lowEarRatio >= EAR_TIRED_SUSTAIN_RATIO
-    const tiredFromYawn = highJawOpenRatio >= JAW_OPEN_SUSTAIN_RATIO
-    const rawTired = tiredFromBlinks || tiredFromEar || tiredFromYawn
-
     const noseBaseline = this.getNoseBaseline(now)
     const headDown = postureBaseline
       ? forwardRatio > postureBaseline.forwardRatio + HEAD_DOWN_DISTRACTED_DELTA
       : noseBaseline !== null && nose.y > noseBaseline + NOSE_Y_DOWN_DISTRACTED
+    const lookingDownStrong = smoothedGazeDown > GAZE_DOWN_DISTRACTED && headDown
+
+    // Step 1 — fatigue: infrequent blinks, partially closed eyes, or sustained yawn (jaw open).
+    const tiredFromBlinks = blinkRateReady && blinksPerMinute < BLINK_RATE_LOW
+    const tiredFromEar = lowEarRatio >= EAR_TIRED_SUSTAIN_RATIO && !lookingDownStrong
+    const tiredFromYawn = highJawOpenRatio >= JAW_OPEN_SUSTAIN_RATIO
+    const rawTired = tiredFromBlinks || tiredFromEar || tiredFromYawn
 
     // Step 2 — distraction: looking down (e.g. phone) via gaze + head pitch.
     const distractedNow =
