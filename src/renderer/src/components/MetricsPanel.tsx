@@ -231,6 +231,13 @@ export default function MetricsPanel(): React.JSX.Element {
               Distracted if &gt; {GAZE_DOWN_DISTRACTED} with head down
             </div>
           </div>
+          <div className="metric-card">
+            <div className="metric-label">Head down</div>
+            <div className="metric-value small">
+              {moodSignals ? (moodSignals.headDown ? 'Yes' : 'No') : '—'}
+            </div>
+            <div className="metric-hint">Debug signal for distracted detection</div>
+          </div>
 
           <div className="metric-card">
             <div className="metric-label">Forward / head tilt offset</div>
