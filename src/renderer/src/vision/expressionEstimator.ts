@@ -7,7 +7,7 @@ import {
   HEAD_JITTER_RESTLESS,
   MOOD_HOLD_MS,
   MOOD_SMOOTH_MS,
-  MOUTH_FROWN_RESTLESS
+  MOUTH_TENSION_RESTLESS
 } from '../constants/thresholds'
 import type { Mood, MoodSignals } from '../types/metrics'
 
@@ -19,6 +19,32 @@ export type MoodUpdateResult = {
 /** Read a single MediaPipe face blendshape score by category name (0 if missing). */
 function blendScore(blendshapes: Category[] | undefined, name: string): number {
   return blendshapes?.find((b) => b.categoryName === name)?.score ?? 0
+}
+
+/** Read blendshape by MediaPipe fixed index, falling back to category name. */
+function blendScoreAt(
+  blendshapes: Category[] | undefined,
+  index: number,
+  name: string
+): number {
+  return blendshapes?.find((b) => b.index === index)?.score ?? blendScore(blendshapes, name)
+}
+
+function browTension(blendshapes: Category[] | undefined): number {
+  return (
+    blendScoreAt(blendshapes, 1, 'browDownLeft') +
+    blendScoreAt(blendshapes, 2, 'browDownRight') +
+    blendScoreAt(blendshapes, 3, 'browInnerUp') * 0.5
+  )
+}
+
+function mouthTension(blendshapes: Category[] | undefined): number {
+  return (
+    blendScoreAt(blendshapes, 30, 'mouthFrownLeft') +
+    blendScoreAt(blendshapes, 31, 'mouthFrownRight') +
+    blendScoreAt(blendshapes, 36, 'mouthPressLeft') +
+    blendScoreAt(blendshapes, 37, 'mouthPressRight')
+  )
 }
 
 /**
@@ -123,14 +149,9 @@ export class ExpressionEstimator {
     // - browDownRight: right outer brow pulls downward (mirror of browDownLeft).
     // - browInnerUp:   inner brow corners raise (often seen with concentration or worry).
     // Summed score > 1.2 suggests strained or restless expression → mood 'restless'.
-    const browDown =
-      blendScore(blendshapes, 'browDownLeft') + blendScore(blendshapes, 'browDownRight')
-    // Restless classification uses outer-brow downturn only; browInnerUp is excluded to
-    // avoid mislabeling focused concentration as restless.
-    const brow = browDown
-    // Left + right mouth-corner downturn (MediaPipe ARKit blendshapes); not a smile metric.
-    const mouth =
-      blendScore(blendshapes, 'mouthFrownLeft') + blendScore(blendshapes, 'mouthFrownRight')
+    const brow = browTension(blendshapes)
+    // Mouth tension: frown corners + lip press (scheme B); not a smile metric.
+    const mouth = mouthTension(blendshapes)
 
     this.signalSamples.push({ ear, brow, mouth, headJitter, t: now })
     this.signalSamples = this.signalSamples.filter((s) => now - s.t <= MOOD_SMOOTH_MS)
@@ -160,10 +181,11 @@ export class ExpressionEstimator {
     const rawTired = tiredFromBlinks || tiredFromEar
 
     // Step 2 — restlessness: large head motion or strained facial expression.
+    // Uses composite brow/mouth tension scores with retuned thresholds (see thresholds.ts).
     const restlessNow =
       smoothedJitter > HEAD_JITTER_RESTLESS ||
       smoothedBrow > BROW_RESTLESS ||
-      smoothedMouth > MOUTH_FROWN_RESTLESS
+      smoothedMouth > MOUTH_TENSION_RESTLESS
     if (restlessNow) {
       if (!this.restlessSince) this.restlessSince = now
     } else {

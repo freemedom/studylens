@@ -4,7 +4,7 @@ import {
   EAR_TIRED,
   HEAD_JITTER_RESTLESS,
   MOOD_BLINK_WARMUP_MS,
-  MOUTH_FROWN_RESTLESS
+  MOUTH_TENSION_RESTLESS
 } from '../constants/thresholds'
 import type { ActivePostureIssue, DistanceStatus, Mood } from '../types/metrics'
 
@@ -198,18 +198,18 @@ export default function MetricsPanel(): React.JSX.Element {
             <div className="metric-hint">Restless if &gt; {HEAD_JITTER_RESTLESS}</div>
           </div>
           <div className="metric-card">
-            <div className="metric-label">Brow score</div>
+            <div className="metric-label">Brow tension</div>
             <div className="metric-value small">
-              {moodSignals ? moodSignals.brow.toFixed(3) : '—'}
+              {moodSignals ? moodSignals.brow.toFixed(4) : '—'}
             </div>
             <div className="metric-hint">Restless if &gt; {BROW_RESTLESS}</div>
           </div>
           <div className="metric-card">
-            <div className="metric-label">Mouth frown</div>
+            <div className="metric-label">Mouth tension</div>
             <div className="metric-value small">
-              {moodSignals ? moodSignals.mouth.toFixed(3) : '—'}
+              {moodSignals ? moodSignals.mouth.toFixed(4) : '—'}
             </div>
-            <div className="metric-hint">Restless if &gt; {MOUTH_FROWN_RESTLESS}</div>
+            <div className="metric-hint">Restless if &gt; {MOUTH_TENSION_RESTLESS}</div>
           </div>
 
           <div className="metric-card">

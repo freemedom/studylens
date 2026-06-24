@@ -1,9 +1,9 @@
 export const BLINK_EAR_THRESHOLD = 0.21
 export const BLINK_RATE_LOW = 10
 export const EAR_TIRED = 0.19
-export const HEAD_JITTER_RESTLESS = 0.035
-export const BROW_RESTLESS = 0.9
-export const MOUTH_FROWN_RESTLESS = 0.8
+export const HEAD_JITTER_RESTLESS = 0.05
+export const BROW_RESTLESS = 0.2
+export const MOUTH_TENSION_RESTLESS = 0.1
 export const MOOD_BLINK_WARMUP_MS = 20_000
 export const MOOD_HOLD_MS = 1_500
 export const MOOD_SMOOTH_MS = 2_000
