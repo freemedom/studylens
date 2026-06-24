@@ -4,6 +4,7 @@ export default function SessionHistoryPanel(): React.JSX.Element {
   const isRunning = useSessionStore((s) => s.isRunning)
   const distanceAlerts = useSessionStore((s) => s.distanceAlerts)
   const tiredSamples = useSessionStore((s) => s.tiredSamples)
+  const distractedSamples = useSessionStore((s) => s.distractedSamples)
   const postureAlerts = useSessionStore((s) => s.postureAlerts)
   const history = useSessionStore((s) => s.history)
 
@@ -15,6 +16,7 @@ export default function SessionHistoryPanel(): React.JSX.Element {
           <div className="session-stats">
             <span>Distance alerts: {distanceAlerts}</span>
             <span>Fatigue events: {tiredSamples}</span>
+            <span>Distraction events: {distractedSamples}</span>
             <span>Posture alerts: {postureAlerts}</span>
           </div>
         </div>
@@ -28,7 +30,7 @@ export default function SessionHistoryPanel(): React.JSX.Element {
           {history.slice(0, 10).map((s) => (
             <li key={s.id}>
               {new Date(s.startedAt).toLocaleString()} — {s.blinkCount} blinks, {s.tiredSamples}{' '}
-              fatigue, {s.postureAlerts ?? 0} posture
+              fatigue, {s.distractedSamples ?? 0} distracted, {s.postureAlerts ?? 0} posture
             </li>
           ))}
         </ul>

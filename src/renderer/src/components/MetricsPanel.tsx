@@ -2,7 +2,9 @@ import { useSessionStore } from '../store/sessionStore'
 import {
   BROW_RESTLESS,
   EAR_TIRED,
+  GAZE_DOWN_DISTRACTED,
   HEAD_JITTER_RESTLESS,
+  JAW_OPEN_YAWN,
   MOOD_BLINK_WARMUP_MS,
   MOUTH_TENSION_RESTLESS
 } from '../constants/thresholds'
@@ -12,6 +14,7 @@ const MOOD_LABELS: Record<Mood, string> = {
   focused: 'Focused',
   tired: 'Tired',
   restless: 'Restless',
+  distracted: 'Distracted',
   unknown: 'Unknown'
 }
 
@@ -19,6 +22,7 @@ const MOOD_CLASS: Record<Mood, string> = {
   focused: 'mood-focused',
   tired: 'mood-tired',
   restless: 'mood-restless',
+  distracted: 'mood-distracted',
   unknown: 'mood-unknown'
 }
 
@@ -210,6 +214,22 @@ export default function MetricsPanel(): React.JSX.Element {
               {moodSignals ? moodSignals.mouth.toFixed(4) : '—'}
             </div>
             <div className="metric-hint">Restless if &gt; {MOUTH_TENSION_RESTLESS}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Jaw open</div>
+            <div className="metric-value small">
+              {moodSignals ? moodSignals.jawOpen.toFixed(4) : '—'}
+            </div>
+            <div className="metric-hint">Contributes to tired if sustained above {JAW_OPEN_YAWN}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Gaze down</div>
+            <div className="metric-value small">
+              {moodSignals ? moodSignals.gazeDown.toFixed(4) : '—'}
+            </div>
+            <div className="metric-hint">
+              Distracted if &gt; {GAZE_DOWN_DISTRACTED} with head down
+            </div>
           </div>
 
           <div className="metric-card">

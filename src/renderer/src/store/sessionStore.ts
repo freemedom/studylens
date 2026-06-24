@@ -43,6 +43,7 @@ interface SessionState {
   sessionStart: number | null
   distanceAlerts: number
   tiredSamples: number
+  distractedSamples: number
   history: SessionSummary[]
   setReady: (ready: boolean) => void
   setError: (error: string | null) => void
@@ -126,6 +127,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   sessionStart: null,
   distanceAlerts: 0,
   tiredSamples: 0,
+  distractedSamples: 0,
   history: loadSessions(),
 
   setReady: (ready) => set({ isReady: ready }),
@@ -147,6 +149,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       moodSignals: null,
       distanceAlerts: 0,
       tiredSamples: 0,
+      distractedSamples: 0,
       alertMessage: null,
       showBreak: false,
       showPostureHint: false
@@ -188,6 +191,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         avgBlinksPerMinute: Math.round(state.blinkCount / durationMin),
         distanceAlerts: state.distanceAlerts,
         tiredSamples: state.tiredSamples,
+        distractedSamples: state.distractedSamples,
         postureAlerts: state.postureAlerts
       }
       saveSession(summary)

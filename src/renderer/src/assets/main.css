@@ -509,6 +509,11 @@ body {
   color: #c084fc;
 }
 
+.mood-distracted {
+  background: rgba(251, 146, 60, 0.2);
+  color: #fb923c;
+}
+
 .mood-unknown {
   background: rgba(139, 156, 179, 0.2);
   color: #8b9cb3;

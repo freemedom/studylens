@@ -4,12 +4,18 @@ import {
   BROW_RESTLESS,
   EAR_TIRED,
   EAR_TIRED_SUSTAIN_RATIO,
+  GAZE_DOWN_DISTRACTED,
+  HEAD_DOWN_DISTRACTED_DELTA,
   HEAD_JITTER_RESTLESS,
+  JAW_OPEN_SUSTAIN_RATIO,
+  JAW_OPEN_YAWN,
   MOOD_HOLD_MS,
   MOOD_SMOOTH_MS,
-  MOUTH_TENSION_RESTLESS
+  MOUTH_TENSION_RESTLESS,
+  NOSE_BASELINE_MS,
+  NOSE_Y_DOWN_DISTRACTED
 } from '../constants/thresholds'
-import type { Mood, MoodSignals } from '../types/metrics'
+import type { Mood, MoodSignals, PostureBaseline } from '../types/metrics'
 
 export type MoodUpdateResult = {
   mood: Mood
@@ -45,6 +51,24 @@ function mouthTension(blendshapes: Category[] | undefined): number {
     blendScoreAt(blendshapes, 36, 'mouthPressLeft') +
     blendScoreAt(blendshapes, 37, 'mouthPressRight')
   )
+}
+
+function jawOpenScore(blendshapes: Category[] | undefined): number {
+  return blendScoreAt(blendshapes, 25, 'jawOpen')
+}
+
+function gazeDownScore(blendshapes: Category[] | undefined): number {
+  return (
+    blendScoreAt(blendshapes, 11, 'eyeLookDownLeft') +
+    blendScoreAt(blendshapes, 12, 'eyeLookDownRight')
+  )
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
 }
 
 /**
@@ -87,21 +111,40 @@ function mouthTension(blendshapes: Category[] | undefined): number {
 export class ExpressionEstimator {
   /** Recent nose positions used to measure head jitter over a sliding window. */
   private headHistory: { x: number; y: number; t: number }[] = []
-  private signalSamples: { ear: number; brow: number; mouth: number; headJitter: number; t: number }[] =
-    []
+  private signalSamples: {
+    ear: number
+    brow: number
+    mouth: number
+    jawOpen: number
+    gazeDown: number
+    headJitter: number
+    t: number
+  }[] = []
+  private noseYBaselineSamples: { y: number; t: number }[] = []
   private currentMood: Mood = 'unknown'
   private candidateMood: Mood | null = null
   private candidateSince: number | null = null
   private restlessSince: number | null = null
+  private distractedSince: number | null = null
 
   /** Clear head-movement history when a new study session starts. */
   reset(): void {
     this.headHistory = []
     this.signalSamples = []
+    this.noseYBaselineSamples = []
     this.currentMood = 'unknown'
     this.candidateMood = null
     this.candidateSince = null
     this.restlessSince = null
+    this.distractedSince = null
+  }
+
+  private getNoseBaseline(now: number): number | null {
+    this.noseYBaselineSamples = this.noseYBaselineSamples.filter(
+      (s) => now - s.t <= NOSE_BASELINE_MS
+    )
+    if (this.noseYBaselineSamples.length < 15) return null
+    return median(this.noseYBaselineSamples.map((s) => s.y))
   }
 
   /**
@@ -114,15 +157,20 @@ export class ExpressionEstimator {
     blinksPerMinute: number,
     ear: number,
     now = Date.now(),
-    blinkRateReady = true
+    blinkRateReady = true,
+    forwardRatio = 0,
+    postureBaseline: PostureBaseline | null = null
   ): MoodUpdateResult {
     if (!nose) {
       this.currentMood = 'unknown'
       this.candidateMood = null
       this.candidateSince = null
       this.restlessSince = null
+      this.distractedSince = null
       return { mood: 'unknown', signals: null }
     }
+
+    this.noseYBaselineSamples.push({ y: nose.y, t: now })
 
     // Append current nose tip; drop samples older than 2 s so jitter reflects recent behavior.
     this.headHistory.push({ x: nose.x, y: nose.y, t: now })
@@ -152,8 +200,10 @@ export class ExpressionEstimator {
     const brow = browTension(blendshapes)
     // Mouth tension: frown corners + lip press (scheme B); not a smile metric.
     const mouth = mouthTension(blendshapes)
+    const jawOpen = jawOpenScore(blendshapes)
+    const gazeDown = gazeDownScore(blendshapes)
 
-    this.signalSamples.push({ ear, brow, mouth, headJitter, t: now })
+    this.signalSamples.push({ ear, brow, mouth, jawOpen, gazeDown, headJitter, t: now })
     this.signalSamples = this.signalSamples.filter((s) => now - s.t <= MOOD_SMOOTH_MS)
 
     const n = this.signalSamples.length
@@ -162,25 +212,56 @@ export class ExpressionEstimator {
       n > 0 ? this.signalSamples.reduce((sum, s) => sum + s.mouth, 0) / n : mouth
     const smoothedJitter =
       n > 0 ? this.signalSamples.reduce((sum, s) => sum + s.headJitter, 0) / n : headJitter
+    const smoothedJawOpen =
+      n > 0 ? this.signalSamples.reduce((sum, s) => sum + s.jawOpen, 0) / n : jawOpen
+    const smoothedGazeDown =
+      n > 0 ? this.signalSamples.reduce((sum, s) => sum + s.gazeDown, 0) / n : gazeDown
     const lowEarRatio =
       n > 0
         ? this.signalSamples.filter((s) => s.ear < EAR_TIRED).length / n
         : ear < EAR_TIRED
           ? 1
           : 0
+    const highJawOpenRatio =
+      n > 0
+        ? this.signalSamples.filter((s) => s.jawOpen > JAW_OPEN_YAWN).length / n
+        : jawOpen > JAW_OPEN_YAWN
+          ? 1
+          : 0
 
     const signals: MoodSignals = {
       headJitter: smoothedJitter,
       brow: smoothedBrow,
-      mouth: smoothedMouth
+      mouth: smoothedMouth,
+      jawOpen: smoothedJawOpen,
+      gazeDown: smoothedGazeDown
     }
 
-    // Step 1 — fatigue: infrequent blinks or partially closed eyes.
+    // Step 1 — fatigue: infrequent blinks, partially closed eyes, or sustained yawn (jaw open).
     const tiredFromBlinks = blinkRateReady && blinksPerMinute < BLINK_RATE_LOW
     const tiredFromEar = lowEarRatio >= EAR_TIRED_SUSTAIN_RATIO
-    const rawTired = tiredFromBlinks || tiredFromEar
+    const tiredFromYawn = highJawOpenRatio >= JAW_OPEN_SUSTAIN_RATIO
+    const rawTired = tiredFromBlinks || tiredFromEar || tiredFromYawn
 
-    // Step 2 — restlessness: large head motion or strained facial expression.
+    const noseBaseline = this.getNoseBaseline(now)
+    const headDown = postureBaseline
+      ? forwardRatio > postureBaseline.forwardRatio + HEAD_DOWN_DISTRACTED_DELTA
+      : noseBaseline !== null && nose.y > noseBaseline + NOSE_Y_DOWN_DISTRACTED
+
+    // Step 2 — distraction: looking down (e.g. phone) via gaze + head pitch.
+    const distractedNow =
+      !rawTired && smoothedGazeDown > GAZE_DOWN_DISTRACTED && headDown
+    if (distractedNow) {
+      if (!this.distractedSince) this.distractedSince = now
+    } else {
+      this.distractedSince = null
+    }
+    const rawDistracted =
+      distractedNow &&
+      this.distractedSince !== null &&
+      now - this.distractedSince >= MOOD_HOLD_MS
+
+    // Step 3 — restlessness: large head motion or strained facial expression.
     // Uses composite brow/mouth tension scores with retuned thresholds (see thresholds.ts).
     const restlessNow =
       smoothedJitter > HEAD_JITTER_RESTLESS ||
@@ -193,13 +274,20 @@ export class ExpressionEstimator {
     }
     const rawRestless =
       !rawTired &&
+      !rawDistracted &&
       restlessNow &&
       this.restlessSince !== null &&
       now - this.restlessSince >= MOOD_HOLD_MS
 
-    const rawMood: Mood = rawTired ? 'tired' : rawRestless ? 'restless' : 'focused'
+    const rawMood: Mood = rawTired
+      ? 'tired'
+      : rawDistracted
+        ? 'distracted'
+        : rawRestless
+          ? 'restless'
+          : 'focused'
 
-    // Step 3 — default attentive state when no fatigue or restlessness cues fire.
+    // Step 4 — default attentive state when no fatigue, distraction, or restlessness cues fire.
     // Debounce mood label changes so single-frame spikes do not flicker the UI.
     let mood = this.currentMood
     if (rawMood === mood) {

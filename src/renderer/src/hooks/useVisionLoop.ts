@@ -1,7 +1,14 @@
 import { useEffect, useRef } from 'react'
-import { FATIGUE_BREAK_SECONDS, POSTURE_ALERT_HOLD_MS } from '../constants/thresholds'
+import { FATIGUE_BREAK_SECONDS, JAW_OPEN_YAWN, POSTURE_ALERT_HOLD_MS } from '../constants/thresholds'
 import { useSessionStore } from '../store/sessionStore'
-import type { ActivePostureIssue, DistanceStatus, Mood, PostureBaseline, PostureMetrics } from '../types/metrics'
+import type {
+  ActivePostureIssue,
+  DistanceStatus,
+  Mood,
+  MoodSignals,
+  PostureBaseline,
+  PostureMetrics
+} from '../types/metrics'
 import { BlinkDetector } from '../vision/blinkDetector'
 import { drawPostureSkeleton } from '../vision/drawPostureSkeleton'
 import { estimateDistanceStatus, estimateFaceRatio } from '../vision/distanceEstimator'
@@ -34,14 +41,18 @@ function buildAlert(
   postureIssues: ActivePostureIssue[],
   mood: Mood,
   blinksPerMinute: number,
-  blinkRateReady: boolean
+  blinkRateReady: boolean,
+  moodSignals: MoodSignals | null
 ): string | null {
   if (distanceStatus === 'too_near') return 'Move back from the screen — about an arm\'s length'
   if (distanceStatus === 'too_far') return 'Move closer to the camera or adjust your posture'
   const postureMsgs = postureAlertMessages(postureIssues)
   if (postureMsgs.length > 0) return postureMsgs.join('；')
+  if (mood === 'tired' && moodSignals && moodSignals.jawOpen >= JAW_OPEN_YAWN)
+    return 'Yawning — take a short break'
   if (mood === 'tired' || (blinkRateReady && blinksPerMinute < 10))
     return 'Low blink rate — take a short break'
+  if (mood === 'distracted') return 'Looking down — refocus on your study'
   if (mood === 'restless') return 'Feeling restless — try a few deep breaths'
   return null
 }
@@ -261,7 +272,9 @@ export function useVisionLoop(
                 blink.blinksPerMinute,
                 blink.ear,
                 wallNow,
-                blink.blinkRateReady
+                blink.blinkRateReady,
+                postureMetrics.forwardRatio,
+                baseline
               )
               const fatigueLevel = computeFatigueLevel(
                 blink.blinksPerMinute,
@@ -277,7 +290,8 @@ export function useVisionLoop(
                     postureIssues,
                     mood,
                     blink.blinksPerMinute,
-                    blink.blinkRateReady
+                    blink.blinkRateReady,
+                    moodSignals
                   )
                 : null
 
@@ -306,6 +320,11 @@ export function useVisionLoop(
               if (isRunning && mood === 'tired' && prevMood.current !== 'tired') {
                 useSessionStore.setState((s) => ({
                   tiredSamples: s.tiredSamples + 1
+                }))
+              }
+              if (isRunning && mood === 'distracted' && prevMood.current !== 'distracted') {
+                useSessionStore.setState((s) => ({
+                  distractedSamples: s.distractedSamples + 1
                 }))
               }
               prevMood.current = mood

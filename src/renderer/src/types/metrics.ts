@@ -1,9 +1,11 @@
-export type Mood = 'focused' | 'tired' | 'restless' | 'unknown'
+export type Mood = 'focused' | 'tired' | 'restless' | 'distracted' | 'unknown'
 
 export interface MoodSignals {
   headJitter: number
   brow: number
   mouth: number
+  jawOpen: number
+  gazeDown: number
 }
 
 export type DistanceStatus = 'good' | 'too_near' | 'too_far' | 'none'
@@ -48,5 +50,6 @@ export interface SessionSummary {
   avgBlinksPerMinute: number
   distanceAlerts: number
   tiredSamples: number
+  distractedSamples?: number
   postureAlerts: number
 }
