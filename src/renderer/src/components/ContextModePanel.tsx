@@ -26,7 +26,15 @@ import type { ContextRule, StudyMode } from '../types/context'
 
 function formatSyncTime(ts: number | null): string {
   if (!ts) return SYNC_NEVER
-  return new Date(ts).toLocaleString()
+  return new Date(ts).toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
 }
 
 function ruleSummary(rule: ContextRule): string {
@@ -139,12 +147,12 @@ export default function ContextModePanel(): React.JSX.Element {
       <div className="metric-card context-status-card">
         <div className="metric-label">Current context</div>
         <div className="context-status-row">
-          <span>WiFi</span>
-          <span>{currentWifi ?? 'No WiFi detected'}</span>
+          <span className="context-status-label">WiFi</span>
+          <span className="context-status-value">{currentWifi ?? 'No WiFi detected'}</span>
         </div>
         <div className="context-status-row">
-          <span>Location</span>
-          <span>
+          <span className="context-status-label">Location</span>
+          <span className="context-status-value">
             {currentLocation
               ? `${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)}`
               : locationError ?? 'No coordinates'}
@@ -243,12 +251,12 @@ export default function ContextModePanel(): React.JSX.Element {
         ) : syncToken ? (
           <>
             <div className="context-status-row">
-              <span>{SYNC_PAIRED_HINT}</span>
-              <span className="context-sync-token">{maskSyncToken(syncToken)}</span>
+              <span className="context-status-label">{SYNC_PAIRED_HINT}</span>
+              <span className="context-status-value context-sync-token">{maskSyncToken(syncToken)}</span>
             </div>
             <div className="context-status-row">
-              <span>{SYNC_LAST_SYNCED}</span>
-              <span>{formatSyncTime(lastSyncedAt)}</span>
+              <span className="context-status-label">{SYNC_LAST_SYNCED}</span>
+              <span className="context-status-value">{formatSyncTime(lastSyncedAt)}</span>
             </div>
             {syncStatus === 'syncing' && <p className="metric-hint">Syncing…</p>}
             {(syncError || syncNotice) && (

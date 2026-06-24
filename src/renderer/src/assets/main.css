@@ -162,13 +162,28 @@ body {
   font-size: 0.95rem;
 }
 
-.context-status-card .context-status-row {
+.context-status-row {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 12px;
   font-size: 0.78rem;
-  color: #a8b8cc;
+}
+
+.context-status-row + .context-status-row {
   margin-top: 6px;
+}
+
+.context-status-label {
+  flex-shrink: 0;
+  color: #8b9cb3;
+}
+
+.context-status-value {
+  color: #dce6f2;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
 }
 
 .context-map-link {
