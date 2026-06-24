@@ -6,6 +6,7 @@ import {
   HEAD_JITTER_RESTLESS,
   JAW_OPEN_YAWN,
   MOOD_BLINK_WARMUP_MS,
+  MOOD_HOLD_MS,
   MOUTH_TENSION_RESTLESS
 } from '../constants/thresholds'
 import type { ActivePostureIssue, DistanceStatus, Mood } from '../types/metrics'
@@ -237,6 +238,20 @@ export default function MetricsPanel(): React.JSX.Element {
               {moodSignals ? (moodSignals.headDown ? 'Yes' : 'No') : '—'}
             </div>
             <div className="metric-hint">Debug signal for distracted detection</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Raw tired</div>
+            <div className="metric-value small">
+              {moodSignals ? (moodSignals.rawTired ? 'Yes' : 'No') : '—'}
+            </div>
+            <div className="metric-hint">Blocks distracted when true</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Distracted hold</div>
+            <div className="metric-value small">
+              {moodSignals ? `${Math.round(moodSignals.distractedHoldMs)} ms` : '—'}
+            </div>
+            <div className="metric-hint">Needs {MOOD_HOLD_MS} ms continuous match</div>
           </div>
 
           <div className="metric-card">

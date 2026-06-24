@@ -1,6 +1,6 @@
 export const BLINK_EAR_THRESHOLD = 0.21
 export const BLINK_RATE_LOW = 10
-export const EAR_TIRED = 0.19
+export const EAR_TIRED = 0.14 // look down will cause ear ratio to be lower
 export const HEAD_JITTER_RESTLESS = 0.05
 export const BROW_RESTLESS = 0.2
 export const MOUTH_TENSION_RESTLESS = 0.1

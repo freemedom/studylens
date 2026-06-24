@@ -7,6 +7,8 @@ export interface MoodSignals {
   jawOpen: number
   gazeDown: number
   headDown: boolean
+  rawTired: boolean
+  distractedHoldMs: number
 }
 
 export type DistanceStatus = 'good' | 'too_near' | 'too_far' | 'none'

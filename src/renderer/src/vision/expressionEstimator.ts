@@ -240,15 +240,6 @@ export class ExpressionEstimator {
       ? forwardRatio > postureBaseline.forwardRatio + HEAD_DOWN_DISTRACTED_DELTA
       : noseBaseline !== null && nose.y > noseBaseline + NOSE_Y_DOWN_DISTRACTED
 
-    const signals: MoodSignals = {
-      headJitter: smoothedJitter,
-      brow: smoothedBrow,
-      mouth: smoothedMouth,
-      jawOpen: smoothedJawOpen,
-      gazeDown: smoothedGazeDown,
-      headDown
-    }
-
     // Step 2 — distraction: looking down (e.g. phone) via gaze + head pitch.
     const distractedNow =
       !rawTired && smoothedGazeDown > GAZE_DOWN_DISTRACTED && headDown
@@ -261,6 +252,19 @@ export class ExpressionEstimator {
       distractedNow &&
       this.distractedSince !== null &&
       now - this.distractedSince >= MOOD_HOLD_MS
+    const distractedHoldMs =
+      distractedNow && this.distractedSince !== null ? now - this.distractedSince : 0
+
+    const signals: MoodSignals = {
+      headJitter: smoothedJitter,
+      brow: smoothedBrow,
+      mouth: smoothedMouth,
+      jawOpen: smoothedJawOpen,
+      gazeDown: smoothedGazeDown,
+      headDown,
+      rawTired,
+      distractedHoldMs
+    }
 
     // Step 3 — restlessness: large head motion or strained facial expression.
     // Uses composite brow/mouth tension scores with retuned thresholds (see thresholds.ts).
