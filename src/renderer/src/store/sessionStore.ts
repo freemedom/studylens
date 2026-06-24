@@ -1,14 +1,17 @@
 import { create } from 'zustand'
-import { SESSIONS_STORAGE_KEY } from '../constants/thresholds'
 import type {
   ActivePostureIssue,
   CalibrationPhase,
   DistanceStatus,
   Mood,
+  MoodEventCounts,
   MoodSignals,
+  PostureAlertCounts,
   PostureBaseline,
   SessionSummary
 } from '../types/metrics'
+import { emptyMoodEvents, emptyPostureAlertCounts } from '../types/metrics'
+import { loadSessions, saveSession } from '../utils/sessionStorage'
 
 interface SessionState {
   isRunning: boolean
@@ -38,12 +41,11 @@ interface SessionState {
   forwardRatio: number
   headOffsetRatio: number
   postureScore: number
-  postureAlerts: number
+  postureAlerts: PostureAlertCounts
   showPostureHint: boolean
   sessionStart: number | null
   distanceAlerts: number
-  tiredSamples: number
-  distractedSamples: number
+  moodEvents: MoodEventCounts
   history: SessionSummary[]
   setReady: (ready: boolean) => void
   setError: (error: string | null) => void
@@ -79,21 +81,6 @@ interface SessionState {
   loadHistory: () => void
 }
 
-function loadSessions(): SessionSummary[] {
-  try {
-    const raw = localStorage.getItem(SESSIONS_STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as SessionSummary[]) : []
-  } catch {
-    return []
-  }
-}
-
-function saveSession(summary: SessionSummary): void {
-  const existing = loadSessions()
-  const next = [summary, ...existing].slice(0, 10)
-  localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(next))
-}
-
 export const useSessionStore = create<SessionState>((set, get) => ({
   isRunning: false,
   isReady: false,
@@ -122,12 +109,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   forwardRatio: 0,
   headOffsetRatio: 0,
   postureScore: 0,
-  postureAlerts: 0,
+  postureAlerts: emptyPostureAlertCounts(),
   showPostureHint: false,
   sessionStart: null,
   distanceAlerts: 0,
-  tiredSamples: 0,
-  distractedSamples: 0,
+  moodEvents: emptyMoodEvents(),
   history: loadSessions(),
 
   setReady: (ready) => set({ isReady: ready }),
@@ -141,15 +127,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       calibrationMessage: null,
       isRunning: false,
       postureBaseline: null,
-      postureAlerts: 0,
+      postureAlerts: emptyPostureAlertCounts(),
       blinkCount: 0,
       blinksPerMinute: 0,
       blinkRateReady: false,
       mood: 'unknown',
       moodSignals: null,
       distanceAlerts: 0,
-      tiredSamples: 0,
-      distractedSamples: 0,
+      moodEvents: emptyMoodEvents(),
       alertMessage: null,
       showBreak: false,
       showPostureHint: false
@@ -182,17 +167,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   stopSession: () => {
     const state = get()
     if (state.sessionStart) {
-      const durationMin = Math.max((Date.now() - state.sessionStart) / 60_000, 0.1)
+      const durationSec = Math.max(Math.round((Date.now() - state.sessionStart) / 1000), 1)
+      const durationMin = Math.max(durationSec / 60, 0.1)
       const summary: SessionSummary = {
         id: crypto.randomUUID(),
         startedAt: new Date(state.sessionStart).toISOString(),
         endedAt: new Date().toISOString(),
+        durationSec,
         blinkCount: state.blinkCount,
         avgBlinksPerMinute: Math.round(state.blinkCount / durationMin),
         distanceAlerts: state.distanceAlerts,
-        tiredSamples: state.tiredSamples,
-        distractedSamples: state.distractedSamples,
-        postureAlerts: state.postureAlerts
+        moodEvents: { ...state.moodEvents },
+        postureAlerts: { ...state.postureAlerts }
       }
       saveSession(summary)
       set({ history: loadSessions() })

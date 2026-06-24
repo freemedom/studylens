@@ -61,11 +61,11 @@ function isBadPosture(issues: ActivePostureIssue[]): boolean {
   return issues.length > 0
 }
 
-function countNewPostureIssues(
+function getNewPostureIssues(
   prev: ActivePostureIssue[],
   next: ActivePostureIssue[]
-): number {
-  return next.filter((issue) => !prev.includes(issue)).length
+): ActivePostureIssue[] {
+  return next.filter((issue) => !prev.includes(issue))
 }
 
 function maybeLogPostureDebug(
@@ -317,27 +317,23 @@ export function useVisionLoop(
               }
               prevDistance.current = distanceStatus
 
-              if (isRunning && mood === 'tired' && prevMood.current !== 'tired') {
+              if (isRunning && mood !== 'unknown' && mood !== prevMood.current) {
                 useSessionStore.setState((s) => ({
-                  tiredSamples: s.tiredSamples + 1
-                }))
-              }
-              if (isRunning && mood === 'distracted' && prevMood.current !== 'distracted') {
-                useSessionStore.setState((s) => ({
-                  distractedSamples: s.distractedSamples + 1
+                  moodEvents: { ...s.moodEvents, [mood]: s.moodEvents[mood] + 1 }
                 }))
               }
               prevMood.current = mood
 
               if (isRunning && isBadPosture(postureIssues)) {
-                const newIssueCount = countNewPostureIssues(
-                  prevPostureIssues.current,
-                  postureIssues
-                )
-                if (newIssueCount > 0) {
-                  useSessionStore.setState((s) => ({
-                    postureAlerts: s.postureAlerts + newIssueCount
-                  }))
+                const newIssues = getNewPostureIssues(prevPostureIssues.current, postureIssues)
+                if (newIssues.length > 0) {
+                  useSessionStore.setState((s) => {
+                    const postureAlerts = { ...s.postureAlerts }
+                    for (const issue of newIssues) {
+                      postureAlerts[issue] += 1
+                    }
+                    return { postureAlerts }
+                  })
                 }
               }
               prevPostureIssues.current = postureIssues

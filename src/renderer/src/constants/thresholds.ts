@@ -19,6 +19,7 @@ export const FACE_RATIO_FAR = 0.20
 export const FATIGUE_BREAK_SECONDS = 20
 export const BLINK_HISTORY_MS = 60_000
 export const SESSIONS_STORAGE_KEY = 'studylens_sessions'
+export const SESSION_HISTORY_MAX = 50
 
 export const POSTURE_CALIBRATION_MS = 5000
 export const FORWARD_RATIO_DELTA = 0.12

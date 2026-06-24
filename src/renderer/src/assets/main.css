@@ -469,9 +469,64 @@ body {
   padding: 4px;
 }
 
-.session-history-current .session-stats {
+.session-history-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.session-history-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.session-history-when {
+  font-size: 0.72rem;
+  color: #8b9cb3;
+  white-space: nowrap;
+}
+
+.session-history-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.session-history-stat-grid--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.session-history-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-history-stat-label {
+  font-size: 0.7rem;
+  color: #8b9cb3;
+}
+
+.session-history-stat-value {
+  font-size: 0.85rem;
+  color: #dce6f2;
+  font-variant-numeric: tabular-nums;
+}
+
+.session-history-group {
+  display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.session-history-group-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #6d8099;
 }
 
 .session-history-empty {
@@ -482,15 +537,12 @@ body {
 }
 
 .session-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin: 0;
-  padding-left: 1.1rem;
-  font-size: 0.75rem;
-  color: #a8b8cc;
-  line-height: 1.5;
-}
-
-.session-history-list li + li {
-  margin-top: 6px;
+  padding: 0;
+  list-style: none;
 }
 
 .metrics-panel h2 {

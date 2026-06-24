@@ -42,14 +42,37 @@ export interface PostureMetrics {
   trackable: boolean
 }
 
+export type SessionMood = Exclude<Mood, 'unknown'>
+
+export interface MoodEventCounts {
+  focused: number
+  tired: number
+  restless: number
+  distracted: number
+}
+
+export interface PostureAlertCounts {
+  forward_head: number
+  head_tilt: number
+  shoulder_uneven: number
+}
+
 export interface SessionSummary {
   id: string
   startedAt: string
   endedAt: string
+  durationSec: number
   blinkCount: number
   avgBlinksPerMinute: number
   distanceAlerts: number
-  tiredSamples: number
-  distractedSamples?: number
-  postureAlerts: number
+  moodEvents: MoodEventCounts
+  postureAlerts: PostureAlertCounts
+}
+
+export function emptyMoodEvents(): MoodEventCounts {
+  return { focused: 0, tired: 0, restless: 0, distracted: 0 }
+}
+
+export function emptyPostureAlertCounts(): PostureAlertCounts {
+  return { forward_head: 0, head_tilt: 0, shoulder_uneven: 0 }
 }
