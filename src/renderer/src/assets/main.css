@@ -20,6 +20,28 @@ body {
   flex-direction: column;
   color: #e7ecf3;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  scrollbar-width: thin;
+  scrollbar-color: #3d4f66 #141c28;
+}
+
+.app *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.app *::-webkit-scrollbar-track {
+  background: #141c28;
+  border-radius: 4px;
+}
+
+.app *::-webkit-scrollbar-thumb {
+  background: #3d4f66;
+  border-radius: 4px;
+  border: 2px solid #141c28;
+}
+
+.app *::-webkit-scrollbar-thumb:hover {
+  background: #4d617a;
 }
 
 .fatigue-overlay {
@@ -261,16 +283,28 @@ body {
   min-height: 0;
 }
 
-.alert-banner {
+.alert-banner-slot {
   position: relative;
+  z-index: 4;
+  flex-shrink: 0;
+  height: 0;
+  overflow: visible;
+}
+
+.alert-banner {
+  position: absolute;
+  top: 8px;
+  left: 24px;
+  right: 24px;
   z-index: 3;
-  margin: 0 24px;
+  margin: 0;
   padding: 10px 16px;
   border-radius: 8px;
-  background: rgba(251, 191, 36, 0.15);
+  background: rgba(26, 35, 50, 0.95);
   border: 1px solid rgba(251, 191, 36, 0.4);
   color: #fcd34d;
   font-size: 0.9rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .camera-preview {
@@ -647,8 +681,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(15, 20, 25, 0.75);
-  backdrop-filter: blur(8px);
+  background: rgba(15, 20, 25, 0.4);
+  backdrop-filter: blur(4px);
 }
 
 .break-card {
